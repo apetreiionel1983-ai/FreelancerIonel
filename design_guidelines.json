@@ -1,0 +1,103 @@
+{
+  "project_name": "WriteGenius",
+  "theme": "Light Theme",
+  "archetype": "Archetype 4 (Swiss & High-Contrast)",
+  "emotional_tone": "Authority, clarity, functional, professional",
+  "typography": {
+    "headings": {
+      "font_family": "Cabinet Grotesk",
+      "style": "tracking-tight to tracking-tighter, font-bold to font-black",
+      "sizes": {
+        "h1": "text-4xl sm:text-5xl lg:text-6xl",
+        "h2": "text-2xl sm:text-3xl lg:text-4xl",
+        "h3": "text-xl sm:text-2xl",
+        "h4": "text-lg sm:text-xl"
+      }
+    },
+    "body": {
+      "font_family": "Satoshi",
+      "style": "leading-relaxed",
+      "sizes": {
+        "default": "text-base",
+        "small": "text-sm",
+        "labels": "text-xs tracking-[0.2em] uppercase"
+      }
+    }
+  },
+  "colors": {
+    "backgrounds": {
+      "primary": "#FFFFFF",
+      "secondary": "#F4F4F5",
+      "surface": "#FAFAFA"
+    },
+    "text": {
+      "primary": "#09090B",
+      "secondary": "#52525B",
+      "muted": "#A1A1AA"
+    },
+    "brand": {
+      "primary": "#002BF6",
+      "primary_hover": "#0021C7"
+    },
+    "status": {
+      "destructive": "#FF3B30",
+      "success": "#00C48C"
+    },
+    "borders": {
+      "default": "#E4E4E7",
+      "focus": "#002BF6"
+    }
+  },
+  "layout_and_spacing": {
+    "philosophy": "Generous Spacing (p-8, p-12) mixed with dense functional grids for the app interface.",
+    "marketing_pages": "Bento Grid (Tetris Grid), high contrast, asymmetrical layouts, exposed grid lines.",
+    "dashboard_apps": "Control Room Grid. No rounded corners (rounded-none). Sharp 1px solid borders.",
+    "surface_strategy": "Grid Borders (Technical Look) - exposed skeleton with border-zinc-200. No soft shadows. Crystal Glassmorphism for sticky headers (backdrop-blur-xl bg-white/70, border-b border-zinc-200)."
+  },
+  "components_instructions": {
+    "global": "CRITICAL: Apply data-testid to all interactive elements. Use Shadcn customized for sharp corners (rounded-none). HTML/Tailwind only for marketing landing structures.",
+    "buttons": "Square edges, solid primary color or sharp 1px outlined ghost buttons. Hover states must change text and background color.",
+    "cards": "Flat background, 1px subtle border, no shadow. On hover: slight lift (-translate-y-1) and subtle shadow.",
+    "forms": "Use Shadcn Form components. Input fields must have rounded-none, 1px border. Focus state must use ring-2 ring-[#002BF6].",
+    "icons": "Use @phosphor-icons/react for a dense, technical look. (Duotone or Regular weight)."
+  },
+  "pages_and_features": {
+    "landing_page": "Hero section with massive Cabinet Grotesk typography, high-impact Klein Blue primary CTA. Marquee 'Editorial Ribbon' with features using react-fast-marquee. Bento grid showcasing 'WriteGenius' capabilities.",
+    "auth": "Split screen layout. Functional minimal form on left, hero abstract image on right.",
+    "dashboard_home": "Grid layout showing 5-free/day usage progress bar, quick access to templates, and recent generation history. If usage >= 5, lock feature and show 'Upgrade to Premium'.",
+    "generation_interface": "Multi-column layout. Left sidebar for template parameters (Social, Email, etc.), Middle/Right area for results. Clear 'Copy to Clipboard' button with Phosphor copy icon.",
+    "pricing": "Clear comparison between Free (5 generations/day) and Premium (Unlimited, Stripe integration). Pricing cards should be stark and functional."
+  },
+  "media_and_assets": {
+    "hero_abstract": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/2fef00ad-31a3-496b-8ffb-385a2c4a02aa/images/d8373a644321b84732aad05d0fbdfc5537bf7b6861fd8b798145300ba7887c61.png",
+      "description": "Minimalist 3D geometric shapes for landing page hero or auth screen background."
+    },
+    "app_demo": {
+      "url": "https://images.unsplash.com/photo-1587545694326-6359f26f3dcc?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHwzfHxwZXJzb24lMjB0eXBpbmclMjBsYXB0b3AlMjBtaW5pbWFsaXN0fGVufDB8fHx8MTc3NjI1MzYyMnww&ixlib=rb-4.1.0&q=85",
+      "description": "Person working on a sleek modern laptop. Use in feature sections."
+    },
+    "sponsor_logos": [
+      {
+        "url": "https://images.unsplash.com/photo-1661347998648-79ad2d81bf26?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwzfHx0ZWNoJTIwY29tcGFueSUyMGxvZ298ZW58MHx8fHwxNzc2MjUzNjM2fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Partner Logo 1 (Apply grayscale/invert as needed)"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1661347998423-b15d37d6f61e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwxfHx0ZWNoJTIwY29tcGFueSUyMGxvZ298ZW58MHx8fHwxNzc2MjUzNjM2fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Partner Logo 2 (Apply grayscale/invert as needed)"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1661347998996-dcf102498c63?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwyfHx0ZWNoJTIwY29tcGFueSUyMGxvZ298ZW58MHx8fHwxNzc2MjUzNjM2fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Partner Logo 3 (Apply grayscale/invert as needed)"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1662052955098-042b46e60c2b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHw0fHx0ZWNoJTIwY29tcGFueSUyMGxvZ298ZW58MHx8fHwxNzc2MjUzNjM2fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Partner Logo 4 (Apply grayscale/invert as needed)"
+      }
+    ]
+  },
+  "dependencies_to_install": [
+    "yarn add @phosphor-icons/react",
+    "yarn add react-fast-marquee"
+  ]
+}
