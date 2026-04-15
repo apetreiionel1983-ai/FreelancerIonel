@@ -613,11 +613,29 @@ const Dashboard = () => {
     }
   };
 
-  const copyToClipboard = () => {
+  const copyToClipboard = async () => {
     if (result?.content) {
-      navigator.clipboard.writeText(result.content);
-      setCopied(true);
-      toast.success("Copied to clipboard!");
+      try {
+        await navigator.clipboard.writeText(result.content);
+        setCopied(true);
+        toast.success("Copied to clipboard!");
+      } catch (err) {
+        // Fallback for environments without clipboard permissions
+        const textArea = document.createElement("textarea");
+        textArea.value = result.content;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand("copy");
+          setCopied(true);
+          toast.success("Copied to clipboard!");
+        } catch (e) {
+          toast.error("Failed to copy. Please select and copy manually.");
+        }
+        document.body.removeChild(textArea);
+      }
       setTimeout(() => setCopied(false), 2000);
     }
   };
