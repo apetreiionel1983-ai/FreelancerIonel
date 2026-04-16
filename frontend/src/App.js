@@ -21,7 +21,10 @@ import {
   Gear,
   CaretDown,
   X,
-  List
+  List,
+  Gift,
+  Share,
+  Users
 } from "@phosphor-icons/react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -60,8 +63,8 @@ const AuthProvider = ({ children }) => {
     return data;
   };
 
-  const register = async (email, password, name) => {
-    const { data } = await API.post("/auth/register", { email, password, name });
+  const register = async (email, password, name, referralCode = null) => {
+    const { data } = await API.post("/auth/register", { email, password, name, referral_code: referralCode });
     setUser(data);
     return data;
   };
@@ -417,6 +420,8 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const { register, user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const referralCode = searchParams.get("ref");
 
   useEffect(() => {
     if (user) navigate("/dashboard");
@@ -427,7 +432,10 @@ const Register = () => {
     setError("");
     setLoading(true);
     try {
-      await register(email, password, name);
+      await register(email, password, name, referralCode);
+      if (referralCode) {
+        toast.success("Welcome! You joined via referral - your friend got bonus generations!");
+      }
       navigate("/dashboard");
     } catch (err) {
       setError(formatError(err));
@@ -443,6 +451,12 @@ const Register = () => {
         <div className="w-full max-w-md">
           <h1 className="text-3xl font-bold tracking-tight mb-2">Create your account</h1>
           <p className="text-zinc-600 mb-8">Start generating amazing content in seconds.</p>
+          
+          {referralCode && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 text-sm mb-6 flex items-center gap-2" data-testid="referral-notice">
+              <Gift size={18} /> You were invited by a friend!
+            </div>
+          )}
           
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm mb-6" data-testid="register-error">
@@ -529,6 +543,9 @@ const Dashboard = () => {
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [referralStats, setReferralStats] = useState(null);
+  const [showReferral, setShowReferral] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const templates = [
     { id: "social_media", name: "Social Media", icon: ChatCircle },
@@ -550,6 +567,7 @@ const Dashboard = () => {
     
     fetchUsage();
     fetchHistory();
+    fetchReferralStats();
   }, [searchParams]);
 
   const pollPaymentStatus = async (sessionId, attempts = 0) => {
@@ -583,6 +601,15 @@ const Dashboard = () => {
       setHistory(data);
     } catch (err) {
       console.error("Failed to fetch history:", err);
+    }
+  };
+
+  const fetchReferralStats = async () => {
+    try {
+      const { data } = await API.get("/auth/referral-stats");
+      setReferralStats(data);
+    } catch (err) {
+      console.error("Failed to fetch referral stats:", err);
     }
   };
 
@@ -637,6 +664,32 @@ const Dashboard = () => {
         document.body.removeChild(textArea);
       }
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const copyReferralLink = async () => {
+    if (referralStats?.referral_link) {
+      try {
+        await navigator.clipboard.writeText(referralStats.referral_link);
+        setLinkCopied(true);
+        toast.success("Referral link copied!");
+      } catch (err) {
+        const textArea = document.createElement("textarea");
+        textArea.value = referralStats.referral_link;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand("copy");
+          setLinkCopied(true);
+          toast.success("Referral link copied!");
+        } catch (e) {
+          toast.error("Failed to copy");
+        }
+        document.body.removeChild(textArea);
+      }
+      setTimeout(() => setLinkCopied(false), 2000);
     }
   };
 

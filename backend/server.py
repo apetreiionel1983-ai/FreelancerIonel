@@ -47,6 +47,7 @@ class UserRegister(BaseModel):
     email: EmailStr
     password: str
     name: str
+    referral_code: Optional[str] = None
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -59,6 +60,14 @@ class UserResponse(BaseModel):
     role: str
     is_premium: bool
     created_at: datetime
+    referral_code: Optional[str] = None
+    bonus_generations: int = 0
+
+class ReferralStats(BaseModel):
+    referral_code: str
+    total_referrals: int
+    bonus_generations: int
+    referral_link: str
 
 class GenerationRequest(BaseModel):
     template: str  # social_media, email, blog, product_description
@@ -111,6 +120,14 @@ def create_refresh_token(user_id: str) -> str:
         "type": "refresh"
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def generate_referral_code(user_id: str) -> str:
+    """Generate a unique referral code based on user_id"""
+    import hashlib
+    hash_obj = hashlib.md5(user_id.encode())
+    return f"WG{hash_obj.hexdigest()[:8].upper()}"
+
+BONUS_GENERATIONS_PER_REFERRAL = 5  # Bonus generations for each successful referral
 
 async def get_current_user(request: Request) -> dict:
     token = request.cookies.get("access_token")
@@ -169,16 +186,51 @@ async def register(user_data: UserRegister, response: Response):
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
     
+    # Create user document
     user_doc = {
         "email": email,
         "password_hash": hash_password(user_data.password),
         "name": user_data.name,
         "role": "user",
         "is_premium": False,
+        "bonus_generations": 0,
+        "total_referrals": 0,
+        "referred_by": None,
         "created_at": datetime.now(timezone.utc)
     }
     result = await db.users.insert_one(user_doc)
     user_id = str(result.inserted_id)
+    
+    # Generate referral code for new user
+    referral_code = generate_referral_code(user_id)
+    await db.users.update_one({"_id": result.inserted_id}, {"$set": {"referral_code": referral_code}})
+    
+    # Handle referral bonus if user was referred
+    if user_data.referral_code:
+        referrer = await db.users.find_one({"referral_code": user_data.referral_code.upper()})
+        if referrer:
+            # Give bonus to referrer
+            await db.users.update_one(
+                {"_id": referrer["_id"]},
+                {
+                    "$inc": {
+                        "bonus_generations": BONUS_GENERATIONS_PER_REFERRAL,
+                        "total_referrals": 1
+                    }
+                }
+            )
+            # Mark new user as referred
+            await db.users.update_one(
+                {"_id": result.inserted_id},
+                {"$set": {"referred_by": str(referrer["_id"])}}
+            )
+            # Log referral
+            await db.referrals.insert_one({
+                "referrer_id": str(referrer["_id"]),
+                "referred_id": user_id,
+                "referral_code": user_data.referral_code.upper(),
+                "created_at": datetime.now(timezone.utc)
+            })
     
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
@@ -192,6 +244,8 @@ async def register(user_data: UserRegister, response: Response):
         "name": user_data.name,
         "role": "user",
         "is_premium": False,
+        "referral_code": referral_code,
+        "bonus_generations": 0,
         "created_at": user_doc["created_at"].isoformat()
     }
 
@@ -217,12 +271,20 @@ async def login(user_data: UserLogin, request: Request, response: Response):
     response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False, samesite="lax", max_age=900, path="/")
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
     
+    # Generate referral code if user doesn't have one
+    referral_code = user.get("referral_code")
+    if not referral_code:
+        referral_code = generate_referral_code(user_id)
+        await db.users.update_one({"_id": user["_id"]}, {"$set": {"referral_code": referral_code}})
+    
     return {
         "id": user_id,
         "email": user["email"],
         "name": user["name"],
         "role": user.get("role", "user"),
         "is_premium": user.get("is_premium", False),
+        "referral_code": referral_code,
+        "bonus_generations": user.get("bonus_generations", 0),
         "created_at": user["created_at"].isoformat() if isinstance(user["created_at"], datetime) else user["created_at"]
     }
 
@@ -240,7 +302,43 @@ async def get_me(user: dict = Depends(get_current_user)):
         "name": user["name"],
         "role": user.get("role", "user"),
         "is_premium": user.get("is_premium", False),
+        "referral_code": user.get("referral_code"),
+        "bonus_generations": user.get("bonus_generations", 0),
+        "total_referrals": user.get("total_referrals", 0),
         "created_at": user["created_at"].isoformat() if isinstance(user["created_at"], datetime) else user["created_at"]
+    }
+
+@auth_router.get("/referral-stats")
+async def get_referral_stats(request: Request, user: dict = Depends(get_current_user)):
+    referral_code = user.get("referral_code")
+    if not referral_code:
+        referral_code = generate_referral_code(user["_id"])
+        await db.users.update_one({"_id": ObjectId(user["_id"])}, {"$set": {"referral_code": referral_code}})
+    
+    # Get referral history
+    referrals = await db.referrals.find({"referrer_id": user["_id"]}).to_list(100)
+    
+    # Get referred users' basic info
+    referred_users = []
+    for ref in referrals:
+        referred_user = await db.users.find_one({"_id": ObjectId(ref["referred_id"])}, {"name": 1, "created_at": 1})
+        if referred_user:
+            referred_users.append({
+                "name": referred_user["name"],
+                "joined_at": ref["created_at"].isoformat() if isinstance(ref["created_at"], datetime) else ref["created_at"]
+            })
+    
+    # Build referral link
+    origin = request.headers.get("origin", "https://writegenius.com")
+    referral_link = f"{origin}/register?ref={referral_code}"
+    
+    return {
+        "referral_code": referral_code,
+        "referral_link": referral_link,
+        "total_referrals": user.get("total_referrals", 0),
+        "bonus_generations": user.get("bonus_generations", 0),
+        "bonus_per_referral": BONUS_GENERATIONS_PER_REFERRAL,
+        "referred_users": referred_users
     }
 
 @auth_router.post("/refresh")
@@ -321,12 +419,14 @@ async def get_user_generation_count(user_id: str) -> int:
 async def generate_content(data: GenerationRequest, user: dict = Depends(get_current_user)):
     user_id = user["_id"]
     is_premium = user.get("is_premium", False)
+    bonus_generations = user.get("bonus_generations", 0)
     
-    # Check generation limit for free users
+    # Check generation limit for free users (base + bonus)
     if not is_premium:
         count = await get_user_generation_count(user_id)
-        if count >= FREE_DAILY_LIMIT:
-            raise HTTPException(status_code=403, detail="Daily limit reached. Upgrade to Premium for unlimited generations.")
+        effective_limit = FREE_DAILY_LIMIT + bonus_generations
+        if count >= effective_limit:
+            raise HTTPException(status_code=403, detail="Daily limit reached. Upgrade to Premium for unlimited generations or invite friends for bonus generations!")
     
     if data.template not in TEMPLATES:
         raise HTTPException(status_code=400, detail="Invalid template")
@@ -386,15 +486,22 @@ async def get_generation_history(user: dict = Depends(get_current_user)):
 async def get_usage_stats(user: dict = Depends(get_current_user)):
     user_id = user["_id"]
     is_premium = user.get("is_premium", False)
+    bonus_generations = user.get("bonus_generations", 0)
     today_count = await get_user_generation_count(user_id)
     total_count = await db.generations.count_documents({"user_id": user_id})
+    
+    # Effective daily limit includes bonus generations
+    effective_limit = FREE_DAILY_LIMIT + bonus_generations if not is_premium else None
+    remaining = None if is_premium else max(0, effective_limit - today_count)
     
     return {
         "today": today_count,
         "total": total_count,
-        "daily_limit": None if is_premium else FREE_DAILY_LIMIT,
+        "daily_limit": effective_limit,
+        "base_limit": FREE_DAILY_LIMIT,
+        "bonus_generations": bonus_generations,
         "is_premium": is_premium,
-        "remaining": None if is_premium else max(0, FREE_DAILY_LIMIT - today_count)
+        "remaining": remaining
     }
 
 # ==================== PAYMENT ROUTES ====================
@@ -524,10 +631,12 @@ async def get_templates():
 async def startup():
     # Create indexes
     await db.users.create_index("email", unique=True)
+    await db.users.create_index("referral_code", unique=True, sparse=True)
     await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
     await db.login_attempts.create_index("identifier")
     await db.generations.create_index([("user_id", 1), ("created_at", -1)])
     await db.payment_transactions.create_index("session_id")
+    await db.referrals.create_index("referrer_id")
     
     # Seed admin
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@writegenius.com")
