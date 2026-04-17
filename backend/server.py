@@ -608,8 +608,12 @@ async def create_book(
             extracted_content = extract_text_from_pdf(file_bytes)
         elif filename.endswith('.epub'):
             extracted_content = extract_text_from_epub(file_bytes)
+        elif filename.endswith('.txt'):
+            extracted_content = file_bytes.decode('utf-8', errors='ignore')
+        elif filename.endswith('.docx'):
+            raise HTTPException(status_code=400, detail="DOCX not supported yet. Please use PDF, EPUB or TXT")
         else:
-            raise HTTPException(status_code=400, detail="Only PDF and EPUB files are supported")
+            raise HTTPException(status_code=400, detail="Only PDF, EPUB and TXT files are supported")
         
         logger.info(f"Extracted {len(extracted_content)} characters from {filename}")
     

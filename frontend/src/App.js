@@ -1361,7 +1361,7 @@ const Admin = () => {
                   <div>
                     <input
                       type="file"
-                      accept=".pdf,.epub"
+                      accept=".pdf,.epub,.txt"
                       onChange={(e) => setFormData({...formData, book_file: e.target.files[0]})}
                       className="w-full px-4 py-2 rounded-lg border border-stone-200"
                       data-testid="book-file-input"
@@ -1372,7 +1372,7 @@ const Admin = () => {
                       </p>
                     )}
                     <p className="text-xs text-stone-500 mt-2">
-                      Acceptă doar fișiere PDF și EPUB. Textul va fi extras automat.
+                      Acceptă fișiere PDF, EPUB și TXT. Textul va fi extras automat.
                     </p>
                   </div>
                 )}
