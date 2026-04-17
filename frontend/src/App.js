@@ -1125,6 +1125,61 @@ const Admin = () => {
 
   const handleDeleteBook = async (bookId) => {
     if (!window.confirm("Ești sigur că vrei să ștergi această carte?")) return;
+
+  const handleEditBook = async (book) => {
+    setEditingBook(book);
+    setFormData({
+      title: book.title,
+      description: book.description,
+      language: book.language,
+      category: book.category,
+      price: book.price,
+      is_free: book.is_free,
+      content: "",
+      cover_url: book.cover_url || "",
+      book_file: null,
+      auto_translate: false
+    });
+    setShowAddBook(true);
+  };
+
+  const handleUpdateBook = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const updateData = {
+        title: formData.title,
+        description: formData.description,
+        price: formData.price,
+        is_free: formData.is_free,
+        cover_url: formData.cover_url
+      };
+      
+      await API.put(`/admin/books/${editingBook._id}`, updateData);
+      
+      toast.success("Cartea a fost actualizată!");
+      setShowAddBook(false);
+      setEditingBook(null);
+      setFormData({
+        title: "",
+        description: "",
+        language: "ro",
+        category: "fiction",
+        price: 0,
+        is_free: true,
+        content: "",
+        cover_url: "",
+        book_file: null,
+        auto_translate: false
+      });
+      fetchData();
+    } catch (err) {
+      toast.error(formatError(err));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
     
     try {
       await API.delete(`/admin/books/${bookId}`);
@@ -1208,12 +1263,22 @@ const Admin = () => {
                       <td className="px-4 py-3">{book.views || 0}</td>
                       <td className="px-4 py-3">{book.sales || 0}</td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => handleDeleteBook(book._id)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <Trash size={18} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleEditBook(book)}
+                            className="text-blue-500 hover:text-blue-700"
+                            title="Editează"
+                          >
+                            <Pencil size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteBook(book._id)}
+                            className="text-red-500 hover:text-red-700"
+                            title="Șterge"
+                          >
+                            <Trash size={18} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1229,11 +1294,11 @@ const Admin = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold">Adaugă Carte Nouă</h2>
-              <button onClick={() => setShowAddBook(false)}><X size={24} /></button>
+              <h2 className="text-xl font-bold">{editingBook ? "Editează Carte" : "Adaugă Carte Nouă"}</h2>
+              <button onClick={() => { setShowAddBook(false); setEditingBook(null); }}><X size={24} /></button>
             </div>
             
-            <form onSubmit={handleAddBook} className="space-y-4">
+            <form onSubmit={editingBook ? handleUpdateBook : handleAddBook} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Titlu</label>
                 <input
@@ -1257,35 +1322,37 @@ const Admin = () => {
                 />
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Limbă</label>
-                  <select
-                    value={formData.language}
-                    onChange={(e) => setFormData({...formData, language: e.target.value})}
-                    className="w-full px-4 py-2 rounded-lg border border-stone-200"
-                    data-testid="book-language-select"
-                  >
-                    {Object.entries(LANGUAGES).map(([code, lang]) => (
-                      <option key={code} value={code}>{lang.flag} {lang.name}</option>
-                    ))}
-                  </select>
+              {!editingBook && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Limbă</label>
+                    <select
+                      value={formData.language}
+                      onChange={(e) => setFormData({...formData, language: e.target.value})}
+                      className="w-full px-4 py-2 rounded-lg border border-stone-200"
+                      data-testid="book-language-select"
+                    >
+                      {Object.entries(LANGUAGES).map(([code, lang]) => (
+                        <option key={code} value={code}>{lang.flag} {lang.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Categorie</label>
+                    <select
+                      value={formData.category}
+                      onChange={(e) => setFormData({...formData, category: e.target.value})}
+                      className="w-full px-4 py-2 rounded-lg border border-stone-200"
+                      data-testid="book-category-select"
+                    >
+                      {Object.entries(CATEGORIES).map(([key, cat]) => (
+                        <option key={key} value={key}>{cat.icon} {cat.ro}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-1">Categorie</label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData({...formData, category: e.target.value})}
-                    className="w-full px-4 py-2 rounded-lg border border-stone-200"
-                    data-testid="book-category-select"
-                  >
-                    {Object.entries(CATEGORIES).map(([key, cat]) => (
-                      <option key={key} value={key}>{cat.icon} {cat.ro}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              )}
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -1321,13 +1388,17 @@ const Admin = () => {
                   value={formData.cover_url}
                   onChange={(e) => setFormData({...formData, cover_url: e.target.value})}
                   className="w-full px-4 py-2 rounded-lg border border-stone-200"
-                  placeholder="https://..."
+                  placeholder="https://i.imgur.com/ABC123.jpg"
                   data-testid="book-cover-input"
                 />
+                <p className="text-xs text-stone-500 mt-1">
+                  💡 Upload imaginea pe <a href="https://imgur.com/upload" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Imgur</a> și copiază link-ul aici
+                </p>
               </div>
               
-              <div>
-                <label className="block text-sm font-medium mb-2">Metodă Încărcare Conținut</label>
+              {!editingBook && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">Metodă Încărcare Conținut</label>
                 <div className="flex gap-4 mb-3">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -1400,9 +1471,11 @@ const Admin = () => {
                     </p>
                   </div>
                 )}
-              </div>
+                </div>
+              )}
               
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              {!editingBook && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
@@ -1435,7 +1508,13 @@ const Admin = () => {
                   className="flex-1 btn-primary py-3 rounded-lg flex items-center justify-center"
                   data-testid="submit-book-btn"
                 >
-                  {submitting ? <div className="spinner border-white border-t-transparent" /> : "Adaugă Carte"}
+                  {submitting ? (
+                    <div className="spinner border-white border-t-transparent" />
+                  ) : editingBook ? (
+                    "Salvează Modificări"
+                  ) : (
+                    "Adaugă Carte"
+                  )}
                 </button>
               </div>
             </form>
