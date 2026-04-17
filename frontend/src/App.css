@@ -1,10 +1,9 @@
-/* WriteGenius App Styles */
+/* FreelancerIonel App Styles */
 
 .App {
   min-height: 100vh;
 }
 
-/* Line clamp utility */
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -19,39 +18,46 @@
   overflow: hidden;
 }
 
-/* Prose styling for generated content */
+/* Prose styling */
+.prose {
+  max-width: 65ch;
+}
+
+.prose h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  font-family: 'Playfair Display', serif;
+}
+
+.prose h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
 .prose p {
-  margin-bottom: 1em;
+  margin-bottom: 1rem;
+  line-height: 1.7;
 }
 
-.prose p:last-child {
-  margin-bottom: 0;
+.prose ul, .prose ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
 }
 
-/* Selection color */
+.prose li {
+  margin-bottom: 0.5rem;
+}
+
+.prose a {
+  color: #f97316;
+  text-decoration: underline;
+}
+
+/* Selection */
 ::selection {
-  background: rgba(0, 43, 246, 0.2);
-  color: #09090B;
-}
-
-/* Focus visible for accessibility */
-button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible {
-  outline: 2px solid #002BF6;
-  outline-offset: 2px;
-}
-
-/* Smooth transitions */
-* {
-  transition-property: background-color, border-color, color, fill, stroke;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
-
-/* Disable transitions for elements that shouldn't animate */
-.no-transition {
-  transition: none !important;
+  background: rgba(249, 115, 22, 0.2);
 }

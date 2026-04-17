@@ -1,30 +1,35 @@
 import { useState, useEffect, createContext, useContext, useCallback } from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useSearchParams, Link } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useSearchParams, Link, useParams } from "react-router-dom";
 import axios from "axios";
 import { Toaster, toast } from "sonner";
-import Marquee from "react-fast-marquee";
 import { 
-  PencilLine, 
-  Lightning, 
-  Sparkle, 
-  EnvelopeSimple, 
-  ChatCircle, 
-  Article, 
-  ShoppingBag,
-  Copy,
-  Check,
-  ArrowRight,
-  Crown,
+  Book, 
+  BookOpen,
   User,
   SignOut,
-  Gear,
-  CaretDown,
-  X,
+  House,
+  MagnifyingGlass,
+  ShoppingCart,
+  Heart,
+  Globe,
+  CaretLeft,
+  CaretRight,
+  Play,
+  Pause,
+  SpeakerHigh,
   List,
+  X,
+  Plus,
+  Pencil,
+  Trash,
+  ChartBar,
   Gift,
-  Share,
-  Users
+  Check,
+  Copy,
+  Eye,
+  Download,
+  Headphones
 } from "@phosphor-icons/react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -33,9 +38,24 @@ const API = axios.create({
   withCredentials: true
 });
 
+// Languages and Categories
+const LANGUAGES = {
+  "ro": { name: "Română", flag: "🇷🇴" },
+  "en": { name: "English", flag: "🇬🇧" },
+  "es": { name: "Español", flag: "🇪🇸" },
+  "de": { name: "Deutsch", flag: "🇩🇪" },
+  "it": { name: "Italiano", flag: "🇮🇹" },
+  "fr": { name: "Français", flag: "🇫🇷" }
+};
+
+const CATEGORIES = {
+  "fiction": { ro: "Ficțiune", en: "Fiction", icon: "📖" },
+  "novella": { ro: "Nuvele", en: "Novellas", icon: "📑" },
+  "poetry": { ro: "Poezii", en: "Poetry", icon: "🎭" }
+};
+
 // Auth Context
 const AuthContext = createContext(null);
-
 const useAuth = () => useContext(AuthContext);
 
 const AuthProvider = ({ children }) => {
@@ -63,8 +83,8 @@ const AuthProvider = ({ children }) => {
     return data;
   };
 
-  const register = async (email, password, name, referralCode = null) => {
-    const { data } = await API.post("/auth/register", { email, password, name, referral_code: referralCode });
+  const register = async (email, password, name) => {
+    const { data } = await API.post("/auth/register", { email, password, name });
     setUser(data);
     return data;
   };
@@ -74,9 +94,7 @@ const AuthProvider = ({ children }) => {
     setUser(false);
   };
 
-  const refreshUser = async () => {
-    await checkAuth();
-  };
+  const refreshUser = () => checkAuth();
 
   return (
     <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
@@ -86,7 +104,7 @@ const AuthProvider = ({ children }) => {
 };
 
 // Protected Route
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, adminOnly = false }) => {
   const { user, loading } = useAuth();
   
   if (loading) {
@@ -97,19 +115,17 @@ const ProtectedRoute = ({ children }) => {
     );
   }
   
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
+  if (!user) return <Navigate to="/login" replace />;
+  if (adminOnly && user.role !== "admin") return <Navigate to="/" replace />;
   
   return children;
 };
 
-// Format API Error
+// Format Error
 const formatError = (error) => {
   const detail = error.response?.data?.detail;
   if (!detail) return error.message || "Something went wrong";
   if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) return detail.map(e => e.msg || JSON.stringify(e)).join(" ");
   return String(detail);
 };
 
@@ -119,44 +135,48 @@ const Navbar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <nav className="glass-header fixed top-0 left-0 right-0 z-50">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2" data-testid="logo-link">
-          <PencilLine size={28} weight="bold" className="text-[#002BF6]" />
-          <span className="text-xl font-bold tracking-tight">WriteGenius</span>
+    <nav className="glass fixed top-0 left-0 right-0 z-50 border-b border-stone-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <Link to="/" className="flex items-center gap-3" data-testid="logo">
+          <Book size={32} weight="duotone" className="text-orange-500" />
+          <span className="text-xl font-bold font-serif">FreelancerIonel</span>
         </Link>
 
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-6">
+          <Link to="/library" className="text-sm font-medium text-stone-600 hover:text-orange-500 transition-colors" data-testid="nav-library">
+            Bibliotecă
+          </Link>
           {user ? (
             <>
-              <Link to="/dashboard" className="text-sm font-medium hover:text-[#002BF6] transition-colors" data-testid="nav-dashboard">
-                Dashboard
+              <Link to="/my-books" className="text-sm font-medium text-stone-600 hover:text-orange-500 transition-colors" data-testid="nav-mybooks">
+                Cărțile Mele
               </Link>
-              <Link to="/pricing" className="text-sm font-medium hover:text-[#002BF6] transition-colors" data-testid="nav-pricing">
-                Pricing
-              </Link>
+              {user.role === "admin" && (
+                <Link to="/admin" className="text-sm font-medium text-stone-600 hover:text-orange-500 transition-colors" data-testid="nav-admin">
+                  Admin
+                </Link>
+              )}
               <div className="relative">
                 <button
                   onClick={() => setMenuOpen(!menuOpen)}
-                  className="flex items-center gap-2 px-3 py-2 border border-zinc-200 hover:border-[#002BF6] transition-colors"
-                  data-testid="user-menu-btn"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-stone-100 transition-colors"
+                  data-testid="user-menu"
                 >
-                  <User size={18} />
+                  <User size={20} />
                   <span className="text-sm font-medium">{user.name}</span>
-                  {user.is_premium && <Crown size={14} className="text-amber-500" />}
-                  <CaretDown size={14} />
                 </button>
                 {menuOpen && (
-                  <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-zinc-200 shadow-lg">
-                    <Link to="/dashboard" className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-zinc-50" onClick={() => setMenuOpen(false)}>
-                      <Gear size={16} /> Settings
-                    </Link>
-                    <button onClick={() => { logout(); setMenuOpen(false); navigate("/"); }} className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-zinc-50 w-full text-left text-red-600" data-testid="logout-btn">
-                      <SignOut size={16} /> Logout
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-stone-200 py-2">
+                    <button
+                      onClick={() => { logout(); setMenuOpen(false); navigate("/"); }}
+                      className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                      data-testid="logout-btn"
+                    >
+                      <SignOut size={18} /> Deconectare
                     </button>
                   </div>
                 )}
@@ -164,36 +184,39 @@ const Navbar = () => {
             </>
           ) : (
             <>
-              <Link to="/login" className="text-sm font-medium hover:text-[#002BF6] transition-colors" data-testid="nav-login">
-                Login
+              <Link to="/login" className="text-sm font-medium text-stone-600 hover:text-orange-500 transition-colors" data-testid="nav-login">
+                Conectare
               </Link>
-              <Link to="/register" className="btn-primary px-5 py-2.5 text-sm" data-testid="nav-register">
-                Get Started
+              <Link to="/register" className="btn-primary px-5 py-2.5 rounded-lg text-sm" data-testid="nav-register">
+                Înregistrare
               </Link>
             </>
           )}
         </div>
 
         {/* Mobile Menu Button */}
-        <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} data-testid="mobile-menu-btn">
-          {mobileMenuOpen ? <X size={24} /> : <List size={24} />}
+        <button className="md:hidden p-2" onClick={() => setMobileOpen(!mobileOpen)}>
+          {mobileOpen ? <X size={24} /> : <List size={24} />}
         </button>
       </div>
 
       {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-t border-zinc-200 px-6 py-4">
+      {mobileOpen && (
+        <div className="md:hidden bg-white border-t border-stone-200 px-4 py-4 space-y-3">
+          <Link to="/library" className="block py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Bibliotecă</Link>
           {user ? (
-            <div className="space-y-3">
-              <Link to="/dashboard" className="block py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>Dashboard</Link>
-              <Link to="/pricing" className="block py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
-              <button onClick={() => { logout(); setMobileMenuOpen(false); navigate("/"); }} className="block py-2 text-sm font-medium text-red-600">Logout</button>
-            </div>
+            <>
+              <Link to="/my-books" className="block py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Cărțile Mele</Link>
+              {user.role === "admin" && (
+                <Link to="/admin" className="block py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Admin</Link>
+              )}
+              <button onClick={() => { logout(); setMobileOpen(false); navigate("/"); }} className="block py-2 text-sm font-medium text-red-600">Deconectare</button>
+            </>
           ) : (
-            <div className="space-y-3">
-              <Link to="/login" className="block py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>Login</Link>
-              <Link to="/register" className="block btn-primary px-4 py-2 text-sm text-center" onClick={() => setMobileMenuOpen(false)}>Get Started</Link>
-            </div>
+            <>
+              <Link to="/login" className="block py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Conectare</Link>
+              <Link to="/register" className="block py-2 text-sm font-medium text-orange-500" onClick={() => setMobileOpen(false)}>Înregistrare</Link>
+            </>
           )}
         </div>
       )}
@@ -201,119 +224,578 @@ const Navbar = () => {
   );
 };
 
+const BookCard = ({ book }) => {
+  const categoryClass = `category-${book.category}`;
+  
+  return (
+    <Link to={`/book/${book._id}`} className="book-card bg-white rounded-2xl overflow-hidden shadow-sm border border-stone-100" data-testid={`book-${book._id}`}>
+      <div className="aspect-[3/4] bg-gradient-to-br from-stone-100 to-stone-200 relative">
+        {book.cover_url ? (
+          <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Book size={64} className="text-stone-400" />
+          </div>
+        )}
+        <div className="absolute top-3 left-3">
+          <span className="flag-emoji">{LANGUAGES[book.language]?.flag}</span>
+        </div>
+        {book.is_free && (
+          <div className="absolute top-3 right-3 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+            GRATUIT
+          </div>
+        )}
+      </div>
+      <div className="p-4">
+        <span className={`category-badge ${categoryClass} mb-2 inline-block`}>
+          {CATEGORIES[book.category]?.icon} {CATEGORIES[book.category]?.ro}
+        </span>
+        <h3 className="font-serif font-bold text-lg mb-1 line-clamp-2">{book.title}</h3>
+        <p className="text-sm text-stone-500 line-clamp-2">{book.description}</p>
+        <div className="mt-3 flex items-center justify-between">
+          {book.is_free ? (
+            <span className="text-green-600 font-semibold">Gratuit</span>
+          ) : (
+            <span className="text-orange-500 font-bold">€{book.price?.toFixed(2)}</span>
+          )}
+          <div className="flex items-center gap-1 text-stone-400 text-sm">
+            <Eye size={16} /> {book.views || 0}
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+};
+
+const AdBanner = ({ type = "horizontal" }) => (
+  <div className={`ad-placeholder rounded-lg ${type === "horizontal" ? "h-24" : "h-64 w-full"}`}>
+    <span>📢 Spațiu publicitar - Google AdSense</span>
+  </div>
+);
+
 // ==================== PAGES ====================
 
-const Landing = () => {
+const Home = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const features = [
-    { icon: ChatCircle, title: "Social Media", desc: "Engaging posts for all platforms" },
-    { icon: EnvelopeSimple, title: "Emails", desc: "Professional business emails" },
-    { icon: Article, title: "Blog Posts", desc: "SEO-optimized articles" },
-    { icon: ShoppingBag, title: "Product Copy", desc: "Conversion-focused descriptions" }
-  ];
+  useEffect(() => {
+    fetchBooks();
+  }, []);
 
-  const marqueeItems = ["AI-Powered Writing", "50+ Languages", "Multiple Tones", "Instant Generation", "Save History", "Copy with One Click"];
+  const fetchBooks = async () => {
+    try {
+      const { data } = await API.get("/books/list");
+      setBooks(data.books.slice(0, 6));
+    } catch (err) {
+      console.error("Failed to fetch books:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen">
       <Navbar />
       
       {/* Hero */}
-      <section className="pt-32 pb-20 px-6">
-        <div className="max-w-5xl mx-auto text-center">
-          <div className="animate-fade-in">
-            <span className="inline-block px-4 py-1.5 text-xs font-semibold tracking-wider uppercase border border-zinc-200 mb-6">
-              AI Writing Assistant
-            </span>
-          </div>
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tighter leading-none mb-6 animate-slide-up">
-            Write Better.<br />
-            <span className="text-[#002BF6]">Write Faster.</span>
+      <section className="pt-24 pb-16 px-4 sm:px-6 bg-gradient-to-b from-orange-50 to-white">
+        <div className="max-w-6xl mx-auto text-center">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-serif font-bold tracking-tight mb-6 animate-fade-in">
+            Bun venit la<br />
+            <span className="text-orange-500">FreelancerIonel</span>
           </h1>
-          <p className="text-lg sm:text-xl text-zinc-600 max-w-2xl mx-auto mb-10 animate-fade-in stagger-2">
-            Generate high-quality content for social media, emails, blogs, and more. 
-            Powered by advanced AI, available in 50+ languages.
+          <p className="text-lg sm:text-xl text-stone-600 max-w-2xl mx-auto mb-8 animate-fade-in">
+            Descoperă cărți electronice în 6 limbi. Citește gratuit online sau cumpără pentru descărcare.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in stagger-3">
-            <button 
-              onClick={() => navigate(user ? "/dashboard" : "/register")} 
-              className="btn-primary px-8 py-4 text-base flex items-center justify-center gap-2"
-              data-testid="hero-cta"
-            >
-              Start Writing Free <ArrowRight size={20} weight="bold" />
-            </button>
-            <Link to="/pricing" className="px-8 py-4 text-base font-semibold border border-zinc-300 hover:border-[#002BF6] transition-colors flex items-center justify-center gap-2" data-testid="hero-pricing">
-              View Pricing
+          <div className="flex flex-wrap justify-center gap-4 animate-fade-in">
+            <Link to="/library" className="btn-primary px-8 py-4 rounded-xl text-lg flex items-center gap-2" data-testid="hero-explore">
+              <BookOpen size={24} /> Explorează Biblioteca
             </Link>
           </div>
-          <p className="text-sm text-zinc-500 mt-4 animate-fade-in stagger-4">
-            <Lightning size={14} className="inline text-amber-500" /> 5 free generations daily • No credit card required
-          </p>
-        </div>
-      </section>
-
-      {/* Marquee */}
-      <div className="marquee-container py-4">
-        <Marquee speed={40} gradient={false}>
-          {marqueeItems.map((item, i) => (
-            <span key={i} className="mx-8 text-sm font-medium flex items-center gap-2">
-              <Sparkle size={14} className="text-[#002BF6]" /> {item}
-            </span>
-          ))}
-        </Marquee>
-      </div>
-
-      {/* Features Grid */}
-      <section className="py-20 px-6 bg-zinc-50">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-center mb-4">
-            Create Content for Any Purpose
-          </h2>
-          <p className="text-zinc-600 text-center max-w-xl mx-auto mb-12">
-            From viral social posts to professional emails, WriteGenius has you covered.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((f, i) => (
-              <div key={i} className="bg-white border border-zinc-200 p-6 card-hover" data-testid={`feature-${f.title.toLowerCase().replace(" ", "-")}`}>
-                <div className="w-12 h-12 bg-[#002BF6] text-white flex items-center justify-center mb-4">
-                  <f.icon size={24} />
-                </div>
-                <h3 className="font-bold text-lg mb-2">{f.title}</h3>
-                <p className="text-sm text-zinc-600">{f.desc}</p>
-              </div>
+          
+          {/* Language Flags */}
+          <div className="mt-12 flex justify-center gap-6 flex-wrap">
+            {Object.entries(LANGUAGES).map(([code, lang]) => (
+              <Link
+                key={code}
+                to={`/library?lang=${code}`}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl hover:bg-white hover:shadow-lg transition-all"
+                data-testid={`lang-${code}`}
+              >
+                <span className="text-4xl">{lang.flag}</span>
+                <span className="text-sm font-medium text-stone-600">{lang.name}</span>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-20 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-6">
-            Ready to transform your writing?
-          </h2>
-          <button 
-            onClick={() => navigate(user ? "/dashboard" : "/register")} 
-            className="btn-primary px-10 py-4 text-lg"
-            data-testid="cta-btn"
-          >
-            Get Started Free
-          </button>
+      {/* Featured Books */}
+      <section className="py-16 px-4 sm:px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-2xl sm:text-3xl font-serif font-bold">Cărți Recente</h2>
+            <Link to="/library" className="text-orange-500 font-medium hover:underline">
+              Vezi toate →
+            </Link>
+          </div>
+          
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="spinner" />
+            </div>
+          ) : books.length === 0 ? (
+            <div className="text-center py-12 text-stone-500">
+              <Book size={48} className="mx-auto mb-4 opacity-50" />
+              <p>Nu există cărți încă. Revino curând!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
+              {books.map((book) => (
+                <BookCard key={book._id} book={book} />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Ad Banner */}
+      <section className="py-8 px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto">
+          <AdBanner type="horizontal" />
+        </div>
+      </section>
+
+      {/* Categories */}
+      <section className="py-16 px-4 sm:px-6 bg-stone-50">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl font-serif font-bold text-center mb-12">Categorii</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            {Object.entries(CATEGORIES).map(([key, cat]) => (
+              <Link
+                key={key}
+                to={`/library?category=${key}`}
+                className="bg-white rounded-2xl p-8 text-center shadow-sm hover:shadow-xl transition-all border border-stone-100"
+                data-testid={`category-${key}`}
+              >
+                <span className="text-5xl mb-4 block">{cat.icon}</span>
+                <h3 className="font-serif font-bold text-xl">{cat.ro}</h3>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Giveaway Banner */}
+      <section className="py-16 px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto bg-gradient-to-r from-orange-500 to-amber-500 rounded-3xl p-8 sm:p-12 text-white text-center">
+          <Gift size={48} className="mx-auto mb-4" />
+          <h2 className="text-2xl sm:text-3xl font-serif font-bold mb-4">Tombolă cu Premii! 🎁</h2>
+          <p className="text-lg opacity-90 mb-6">
+            La <strong>500 de cumpărături</strong> - câștigă o <strong>Tabletă</strong> (€150)!<br />
+            La <strong>1000 de cumpărături</strong> - abonamente gratuite!
+          </p>
+          <Link to="/giveaway" className="inline-block bg-white text-orange-500 font-bold px-8 py-3 rounded-xl hover:bg-orange-50 transition-colors">
+            Află mai multe
+          </Link>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-200 py-8 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <PencilLine size={20} className="text-[#002BF6]" />
-            <span className="font-bold">WriteGenius</span>
+      <footer className="border-t border-stone-200 py-8 px-4 sm:px-6 bg-white">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Book size={24} className="text-orange-500" />
+              <span className="font-serif font-bold">FreelancerIonel</span>
+            </div>
+            <div className="flex gap-6 text-sm text-stone-500">
+              <Link to="/terms" className="hover:text-orange-500">Termeni și Condiții</Link>
+              <Link to="/privacy" className="hover:text-orange-500">Confidențialitate</Link>
+              <Link to="/giveaway" className="hover:text-orange-500">Regulament Tombolă</Link>
+            </div>
           </div>
-          <p className="text-sm text-zinc-500">© 2026 WriteGenius. All rights reserved.</p>
+          <p className="text-center text-sm text-stone-400 mt-6">
+            © 2026 FreelancerIonel. Toate drepturile rezervate.
+          </p>
         </div>
       </footer>
+    </div>
+  );
+};
+
+const Library = () => {
+  const [searchParams] = useSearchParams();
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedLang, setSelectedLang] = useState(searchParams.get("lang") || "");
+  const [selectedCat, setSelectedCat] = useState(searchParams.get("category") || "");
+
+  useEffect(() => {
+    fetchBooks();
+  }, [selectedLang, selectedCat]);
+
+  const fetchBooks = async () => {
+    setLoading(true);
+    try {
+      let url = "/books/list";
+      const params = [];
+      if (selectedLang) params.push(`language=${selectedLang}`);
+      if (selectedCat) params.push(`category=${selectedCat}`);
+      if (params.length) url += `?${params.join("&")}`;
+      
+      const { data } = await API.get(url);
+      setBooks(data.books);
+    } catch (err) {
+      console.error("Failed to fetch books:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-stone-50">
+      <Navbar />
+      
+      <main className="pt-24 pb-16 px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-3xl sm:text-4xl font-serif font-bold mb-8">Bibliotecă</h1>
+          
+          {/* Filters */}
+          <div className="bg-white rounded-2xl p-4 sm:p-6 mb-8 shadow-sm border border-stone-100">
+            <div className="flex flex-wrap gap-4">
+              <div>
+                <label className="block text-sm font-medium text-stone-600 mb-2">Limbă</label>
+                <select
+                  value={selectedLang}
+                  onChange={(e) => setSelectedLang(e.target.value)}
+                  className="px-4 py-2 rounded-lg border border-stone-200 bg-white min-w-[150px]"
+                  data-testid="filter-language"
+                >
+                  <option value="">Toate limbile</option>
+                  {Object.entries(LANGUAGES).map(([code, lang]) => (
+                    <option key={code} value={code}>{lang.flag} {lang.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-600 mb-2">Categorie</label>
+                <select
+                  value={selectedCat}
+                  onChange={(e) => setSelectedCat(e.target.value)}
+                  className="px-4 py-2 rounded-lg border border-stone-200 bg-white min-w-[150px]"
+                  data-testid="filter-category"
+                >
+                  <option value="">Toate categoriile</option>
+                  {Object.entries(CATEGORIES).map(([key, cat]) => (
+                    <option key={key} value={key}>{cat.icon} {cat.ro}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Books Grid */}
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="spinner" />
+            </div>
+          ) : books.length === 0 ? (
+            <div className="text-center py-12 text-stone-500">
+              <Book size={48} className="mx-auto mb-4 opacity-50" />
+              <p>Nu au fost găsite cărți cu filtrele selectate.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+              {books.map((book) => (
+                <BookCard key={book._id} book={book} />
+              ))}
+            </div>
+          )}
+          
+          {/* Ad */}
+          <div className="mt-12">
+            <AdBanner type="horizontal" />
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+const BookDetail = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { user, refreshUser } = useAuth();
+  const [book, setBook] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [purchasing, setPurchasing] = useState(false);
+
+  useEffect(() => {
+    fetchBook();
+  }, [id]);
+
+  const fetchBook = async () => {
+    try {
+      const { data } = await API.get(`/books/${id}`);
+      setBook(data);
+    } catch (err) {
+      toast.error("Cartea nu a fost găsită");
+      navigate("/library");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePurchase = async () => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    
+    setPurchasing(true);
+    try {
+      const { data } = await API.post("/payments/purchase", {
+        book_id: id,
+        origin_url: window.location.origin
+      });
+      
+      if (data.free) {
+        toast.success("Cartea a fost adăugată în biblioteca ta!");
+        refreshUser();
+        fetchBook();
+      } else if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      toast.error(formatError(err));
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="spinner" />
+      </div>
+    );
+  }
+
+  if (!book) return null;
+
+  return (
+    <div className="min-h-screen bg-stone-50">
+      <Navbar />
+      
+      <main className="pt-24 pb-16 px-4 sm:px-6">
+        <div className="max-w-5xl mx-auto">
+          <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-stone-600 hover:text-orange-500 mb-6">
+            <CaretLeft size={20} /> Înapoi
+          </button>
+          
+          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-stone-100">
+            <div className="grid md:grid-cols-3 gap-8">
+              {/* Cover */}
+              <div className="aspect-[3/4] bg-gradient-to-br from-stone-100 to-stone-200 rounded-2xl overflow-hidden relative">
+                {book.cover_url ? (
+                  <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Book size={80} className="text-stone-400" />
+                  </div>
+                )}
+              </div>
+              
+              {/* Info */}
+              <div className="md:col-span-2">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="flag-emoji text-2xl">{LANGUAGES[book.language]?.flag}</span>
+                  <span className={`category-badge category-${book.category}`}>
+                    {CATEGORIES[book.category]?.icon} {CATEGORIES[book.category]?.ro}
+                  </span>
+                </div>
+                
+                <h1 className="text-3xl sm:text-4xl font-serif font-bold mb-4" data-testid="book-title">
+                  {book.title}
+                </h1>
+                
+                <p className="text-stone-600 mb-6">{book.description}</p>
+                
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="flex items-center gap-2 text-stone-500">
+                    <Eye size={20} /> {book.views || 0} vizualizări
+                  </div>
+                  {book.has_audio && (
+                    <div className="flex items-center gap-2 text-stone-500">
+                      <Headphones size={20} /> Audio disponibil
+                    </div>
+                  )}
+                </div>
+                
+                {/* Price & Actions */}
+                <div className="bg-stone-50 rounded-xl p-6">
+                  {book.is_free ? (
+                    <p className="text-2xl font-bold text-green-600 mb-4">Gratuit</p>
+                  ) : (
+                    <p className="text-3xl font-bold text-orange-500 mb-4">€{book.price?.toFixed(2)}</p>
+                  )}
+                  
+                  <div className="flex flex-wrap gap-3">
+                    <Link
+                      to={`/read/${id}`}
+                      className="flex-1 btn-primary py-3 rounded-xl flex items-center justify-center gap-2"
+                      data-testid="read-btn"
+                    >
+                      <BookOpen size={20} /> Citește Online {!book.owned && "(cu reclame)"}
+                    </Link>
+                    
+                    {!book.owned && (
+                      <button
+                        onClick={handlePurchase}
+                        disabled={purchasing}
+                        className="flex-1 bg-stone-900 text-white py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-stone-800 disabled:opacity-50"
+                        data-testid="buy-btn"
+                      >
+                        {purchasing ? (
+                          <div className="spinner border-white border-t-transparent" />
+                        ) : (
+                          <>
+                            <ShoppingCart size={20} /> 
+                            {book.is_free ? "Adaugă în bibliotecă" : "Cumpără"}
+                          </>
+                        )}
+                      </button>
+                    )}
+                    
+                    {book.owned && (
+                      <span className="flex-1 bg-green-100 text-green-700 py-3 rounded-xl flex items-center justify-center gap-2 font-medium">
+                        <Check size={20} /> Deții această carte
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Ad */}
+          <div className="mt-8">
+            <AdBanner type="horizontal" />
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+const Reader = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    fetchPage(1);
+  }, [id]);
+
+  const fetchPage = async (p) => {
+    setLoading(true);
+    try {
+      const { data } = await API.get(`/books/${id}/read?page=${p}`);
+      setData(data);
+      setPage(data.current_page);
+    } catch (err) {
+      toast.error("Eroare la încărcarea cărții");
+      navigate("/library");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const goToPage = (p) => {
+    if (p >= 1 && p <= (data?.total_pages || 1)) {
+      fetchPage(p);
+      window.scrollTo(0, 0);
+    }
+  };
+
+  if (loading && !data) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-amber-50">
+        <div className="spinner" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-amber-50">
+      {/* Top Bar */}
+      <div className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur border-b border-stone-200 z-50">
+        <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
+          <button onClick={() => navigate(`/book/${id}`)} className="flex items-center gap-2 text-stone-600">
+            <CaretLeft size={20} /> Înapoi
+          </button>
+          <h1 className="font-serif font-bold truncate max-w-[200px] sm:max-w-none">{data?.title}</h1>
+          <span className="text-sm text-stone-500">{page} / {data?.total_pages}</span>
+        </div>
+      </div>
+
+      {/* Reader Content */}
+      <main className="pt-20 pb-24 px-4">
+        <div className="max-w-3xl mx-auto">
+          {/* Ad at top if not owned */}
+          {data?.show_ads && (
+            <div className="mb-8">
+              <AdBanner type="horizontal" />
+            </div>
+          )}
+          
+          {/* Content */}
+          <div className="bg-white rounded-2xl p-6 sm:p-12 shadow-sm min-h-[60vh]">
+            <div className="reader-content" data-testid="reader-content">
+              {data?.content?.split('\n').map((para, i) => (
+                <p key={i}>{para}</p>
+              ))}
+            </div>
+          </div>
+          
+          {/* Ad at bottom if not owned */}
+          {data?.show_ads && (
+            <div className="mt-8">
+              <AdBanner type="horizontal" />
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur border-t border-stone-200">
+        <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+          <button
+            onClick={() => goToPage(page - 1)}
+            disabled={page <= 1 || loading}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-stone-100 disabled:opacity-50"
+            data-testid="prev-page"
+          >
+            <CaretLeft size={20} /> Anterior
+          </button>
+          
+          <span className="text-sm font-medium">Pagina {page} din {data?.total_pages}</span>
+          
+          <button
+            onClick={() => goToPage(page + 1)}
+            disabled={page >= data?.total_pages || loading}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 text-white disabled:opacity-50"
+            data-testid="next-page"
+          >
+            Următor <CaretRight size={20} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
@@ -327,7 +809,7 @@ const Login = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) navigate("/dashboard");
+    if (user) navigate("/");
   }, [user, navigate]);
 
   const handleSubmit = async (e) => {
@@ -336,7 +818,7 @@ const Login = () => {
     setLoading(true);
     try {
       await login(email, password);
-      navigate("/dashboard");
+      navigate("/");
     } catch (err) {
       setError(formatError(err));
     } finally {
@@ -345,40 +827,41 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex">
-      <Navbar />
-      <div className="flex-1 flex items-center justify-center p-6 pt-24">
-        <div className="w-full max-w-md">
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Welcome back</h1>
-          <p className="text-zinc-600 mb-8">Sign in to continue creating amazing content.</p>
+    <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <Link to="/" className="flex items-center justify-center gap-2 mb-8">
+          <Book size={32} className="text-orange-500" />
+          <span className="text-2xl font-serif font-bold">FreelancerIonel</span>
+        </Link>
+        
+        <div className="bg-white rounded-2xl p-8 shadow-sm border border-stone-100">
+          <h1 className="text-2xl font-serif font-bold mb-6 text-center">Conectare</h1>
           
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm mb-6" data-testid="login-error">
+            <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm mb-4" data-testid="login-error">
               {error}
             </div>
           )}
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1.5">Email</label>
+              <label className="block text-sm font-medium mb-1">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-zinc-300 focus:border-[#002BF6] focus:ring-2 focus:ring-[#002BF6]/20 outline-none transition-colors"
-                placeholder="you@example.com"
+                className="w-full px-4 py-3 rounded-lg border border-stone-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none"
                 required
                 data-testid="login-email"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1.5">Password</label>
+              <label className="block text-sm font-medium mb-1">Parolă</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-zinc-300 focus:border-[#002BF6] focus:ring-2 focus:ring-[#002BF6]/20 outline-none transition-colors"
-                placeholder="••••••••"
+                className="w-full px-4 py-3 rounded-lg border border-stone-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none"
                 required
                 data-testid="login-password"
               />
@@ -386,27 +869,17 @@ const Login = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary py-3 flex items-center justify-center gap-2"
+              className="w-full btn-primary py-3 rounded-lg flex items-center justify-center"
               data-testid="login-submit"
             >
-              {loading ? <div className="spinner border-white border-t-transparent" /> : "Sign In"}
+              {loading ? <div className="spinner border-white border-t-transparent" /> : "Conectare"}
             </button>
           </form>
           
-          <p className="text-sm text-zinc-600 mt-6 text-center">
-            Don't have an account?{" "}
-            <Link to="/register" className="text-[#002BF6] font-medium hover:underline" data-testid="goto-register">
-              Sign up free
-            </Link>
+          <p className="text-center text-sm text-stone-500 mt-6">
+            Nu ai cont? <Link to="/register" className="text-orange-500 font-medium">Înregistrează-te</Link>
           </p>
         </div>
-      </div>
-      <div className="hidden lg:block flex-1 bg-zinc-100 relative">
-        <img 
-          src="https://static.prod-images.emergentagent.com/jobs/2fef00ad-31a3-496b-8ffb-385a2c4a02aa/images/d8373a644321b84732aad05d0fbdfc5537bf7b6861fd8b798145300ba7887c61.png" 
-          alt="Abstract" 
-          className="absolute inset-0 w-full h-full object-cover"
-        />
       </div>
     </div>
   );
@@ -420,11 +893,9 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const { register, user } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const referralCode = searchParams.get("ref");
 
   useEffect(() => {
-    if (user) navigate("/dashboard");
+    if (user) navigate("/");
   }, [user, navigate]);
 
   const handleSubmit = async (e) => {
@@ -432,11 +903,8 @@ const Register = () => {
     setError("");
     setLoading(true);
     try {
-      await register(email, password, name, referralCode);
-      if (referralCode) {
-        toast.success("Welcome! You joined via referral - your friend got bonus generations!");
-      }
-      navigate("/dashboard");
+      await register(email, password, name);
+      navigate("/");
     } catch (err) {
       setError(formatError(err));
     } finally {
@@ -445,58 +913,52 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen flex">
-      <Navbar />
-      <div className="flex-1 flex items-center justify-center p-6 pt-24">
-        <div className="w-full max-w-md">
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Create your account</h1>
-          <p className="text-zinc-600 mb-8">Start generating amazing content in seconds.</p>
-          
-          {referralCode && (
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 text-sm mb-6 flex items-center gap-2" data-testid="referral-notice">
-              <Gift size={18} /> You were invited by a friend!
-            </div>
-          )}
+    <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <Link to="/" className="flex items-center justify-center gap-2 mb-8">
+          <Book size={32} className="text-orange-500" />
+          <span className="text-2xl font-serif font-bold">FreelancerIonel</span>
+        </Link>
+        
+        <div className="bg-white rounded-2xl p-8 shadow-sm border border-stone-100">
+          <h1 className="text-2xl font-serif font-bold mb-6 text-center">Înregistrare</h1>
           
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm mb-6" data-testid="register-error">
+            <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm mb-4" data-testid="register-error">
               {error}
             </div>
           )}
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1.5">Name</label>
+              <label className="block text-sm font-medium mb-1">Nume</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-3 border border-zinc-300 focus:border-[#002BF6] focus:ring-2 focus:ring-[#002BF6]/20 outline-none transition-colors"
-                placeholder="Your name"
+                className="w-full px-4 py-3 rounded-lg border border-stone-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none"
                 required
                 data-testid="register-name"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1.5">Email</label>
+              <label className="block text-sm font-medium mb-1">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-zinc-300 focus:border-[#002BF6] focus:ring-2 focus:ring-[#002BF6]/20 outline-none transition-colors"
-                placeholder="you@example.com"
+                className="w-full px-4 py-3 rounded-lg border border-stone-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none"
                 required
                 data-testid="register-email"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1.5">Password</label>
+              <label className="block text-sm font-medium mb-1">Parolă</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-zinc-300 focus:border-[#002BF6] focus:ring-2 focus:ring-[#002BF6]/20 outline-none transition-colors"
-                placeholder="At least 6 characters"
+                className="w-full px-4 py-3 rounded-lg border border-stone-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none"
                 required
                 minLength={6}
                 data-testid="register-password"
@@ -505,499 +967,437 @@ const Register = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary py-3 flex items-center justify-center gap-2"
+              className="w-full btn-primary py-3 rounded-lg flex items-center justify-center"
               data-testid="register-submit"
             >
-              {loading ? <div className="spinner border-white border-t-transparent" /> : "Create Account"}
+              {loading ? <div className="spinner border-white border-t-transparent" /> : "Creează cont"}
             </button>
           </form>
           
-          <p className="text-sm text-zinc-600 mt-6 text-center">
-            Already have an account?{" "}
-            <Link to="/login" className="text-[#002BF6] font-medium hover:underline" data-testid="goto-login">
-              Sign in
-            </Link>
+          <p className="text-center text-sm text-stone-500 mt-6">
+            Ai deja cont? <Link to="/login" className="text-orange-500 font-medium">Conectează-te</Link>
           </p>
         </div>
       </div>
-      <div className="hidden lg:block flex-1 bg-zinc-100 relative">
-        <img 
-          src="https://static.prod-images.emergentagent.com/jobs/2fef00ad-31a3-496b-8ffb-385a2c4a02aa/images/d8373a644321b84732aad05d0fbdfc5537bf7b6861fd8b798145300ba7887c61.png" 
-          alt="Abstract" 
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-      </div>
     </div>
   );
 };
 
-const Dashboard = () => {
-  const { user, refreshUser } = useAuth();
-  const [searchParams] = useSearchParams();
-  const [usage, setUsage] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [template, setTemplate] = useState("social_media");
-  const [prompt, setPrompt] = useState("");
-  const [language, setLanguage] = useState("English");
-  const [tone, setTone] = useState("Professional");
-  const [generating, setGenerating] = useState(false);
-  const [result, setResult] = useState(null);
-  const [copied, setCopied] = useState(false);
-  const [referralStats, setReferralStats] = useState(null);
-  const [showReferral, setShowReferral] = useState(false);
-  const [linkCopied, setLinkCopied] = useState(false);
-
-  const templates = [
-    { id: "social_media", name: "Social Media", icon: ChatCircle },
-    { id: "email", name: "Email", icon: EnvelopeSimple },
-    { id: "blog", name: "Blog Post", icon: Article },
-    { id: "product_description", name: "Product", icon: ShoppingBag }
-  ];
-
-  const languages = ["English", "Spanish", "French", "German", "Italian", "Portuguese", "Romanian", "Dutch", "Polish", "Russian", "Chinese", "Japanese", "Korean", "Arabic", "Hindi"];
-  const tones = ["Professional", "Casual", "Friendly", "Persuasive", "Humorous", "Formal", "Inspirational"];
+const MyBooks = () => {
+  const { user } = useAuth();
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const sessionId = searchParams.get("session_id");
-    const paymentStatus = searchParams.get("payment");
-    
-    if (sessionId && paymentStatus === "success") {
-      pollPaymentStatus(sessionId);
-    }
-    
-    fetchUsage();
-    fetchHistory();
-    fetchReferralStats();
-  }, [searchParams]);
+    fetchMyBooks();
+  }, [user]);
 
-  const pollPaymentStatus = async (sessionId, attempts = 0) => {
-    if (attempts >= 5) return;
-    
-    try {
-      const { data } = await API.get(`/payments/status/${sessionId}`);
-      if (data.payment_status === "paid") {
-        toast.success("Payment successful! You're now Premium!");
-        refreshUser();
-        return;
-      }
-      setTimeout(() => pollPaymentStatus(sessionId, attempts + 1), 2000);
-    } catch (err) {
-      console.error("Payment status error:", err);
-    }
-  };
-
-  const fetchUsage = async () => {
-    try {
-      const { data } = await API.get("/generation/usage");
-      setUsage(data);
-    } catch (err) {
-      console.error("Failed to fetch usage:", err);
-    }
-  };
-
-  const fetchHistory = async () => {
-    try {
-      const { data } = await API.get("/generation/history");
-      setHistory(data);
-    } catch (err) {
-      console.error("Failed to fetch history:", err);
-    }
-  };
-
-  const fetchReferralStats = async () => {
-    try {
-      const { data } = await API.get("/auth/referral-stats");
-      setReferralStats(data);
-    } catch (err) {
-      console.error("Failed to fetch referral stats:", err);
-    }
-  };
-
-  const handleGenerate = async () => {
-    if (!prompt.trim()) {
-      toast.error("Please enter a prompt");
+  const fetchMyBooks = async () => {
+    if (!user?.purchased_books?.length) {
+      setBooks([]);
+      setLoading(false);
       return;
     }
     
-    setGenerating(true);
-    setResult(null);
-    
     try {
-      const { data } = await API.post("/generation/generate", {
-        template,
-        prompt,
-        language,
-        tone
-      });
-      setResult(data);
-      fetchUsage();
-      fetchHistory();
-      toast.success("Content generated!");
+      const { data } = await API.get("/books/list");
+      const myBooks = data.books.filter(b => user.purchased_books.includes(b._id));
+      setBooks(myBooks);
     } catch (err) {
-      toast.error(formatError(err));
+      console.error("Failed to fetch books:", err);
     } finally {
-      setGenerating(false);
-    }
-  };
-
-  const copyToClipboard = async () => {
-    if (result?.content) {
-      try {
-        await navigator.clipboard.writeText(result.content);
-        setCopied(true);
-        toast.success("Copied to clipboard!");
-      } catch (err) {
-        // Fallback for environments without clipboard permissions
-        const textArea = document.createElement("textarea");
-        textArea.value = result.content;
-        textArea.style.position = "fixed";
-        textArea.style.left = "-999999px";
-        document.body.appendChild(textArea);
-        textArea.select();
-        try {
-          document.execCommand("copy");
-          setCopied(true);
-          toast.success("Copied to clipboard!");
-        } catch (e) {
-          toast.error("Failed to copy. Please select and copy manually.");
-        }
-        document.body.removeChild(textArea);
-      }
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const copyReferralLink = async () => {
-    if (referralStats?.referral_link) {
-      try {
-        await navigator.clipboard.writeText(referralStats.referral_link);
-        setLinkCopied(true);
-        toast.success("Referral link copied!");
-      } catch (err) {
-        const textArea = document.createElement("textarea");
-        textArea.value = referralStats.referral_link;
-        textArea.style.position = "fixed";
-        textArea.style.left = "-999999px";
-        document.body.appendChild(textArea);
-        textArea.select();
-        try {
-          document.execCommand("copy");
-          setLinkCopied(true);
-          toast.success("Referral link copied!");
-        } catch (e) {
-          toast.error("Failed to copy");
-        }
-        document.body.removeChild(textArea);
-      }
-      setTimeout(() => setLinkCopied(false), 2000);
-    }
-  };
-
-  const usagePercent = usage ? Math.min(100, (usage.today / (usage.daily_limit || 1)) * 100) : 0;
-  const isLimitReached = usage && !usage.is_premium && usage.remaining === 0;
-
-  return (
-    <div className="min-h-screen bg-zinc-50">
-      <Navbar />
-      
-      <main className="pt-20 pb-12 px-6">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-              <p className="text-zinc-600">Welcome back, {user?.name}</p>
-            </div>
-            
-            {user?.is_premium ? (
-              <span className="inline-flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 border border-amber-200 text-sm font-medium" data-testid="premium-badge">
-                <Crown size={18} /> Premium Member
-              </span>
-            ) : (
-              <Link to="/pricing" className="btn-primary px-5 py-2.5 text-sm inline-flex items-center gap-2" data-testid="upgrade-btn">
-                <Crown size={18} /> Upgrade to Premium
-              </Link>
-            )}
-          </div>
-
-          {/* Usage Card */}
-          {usage && !usage.is_premium && (
-            <div className="bg-white border border-zinc-200 p-6 mb-8" data-testid="usage-card">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium">Daily Usage</span>
-                <span className="text-sm text-zinc-600">{usage.today} / {usage.daily_limit} generations</span>
-              </div>
-              <div className="h-2 bg-zinc-100 overflow-hidden">
-                <div 
-                  className={`h-full transition-all ${usagePercent >= 100 ? 'bg-red-500' : 'bg-[#002BF6]'}`}
-                  style={{ width: `${usagePercent}%` }}
-                />
-              </div>
-              {isLimitReached && (
-                <p className="text-sm text-red-600 mt-2">
-                  Daily limit reached. <Link to="/pricing" className="underline font-medium">Upgrade for unlimited</Link>
-                </p>
-              )}
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Generator */}
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white border border-zinc-200 p-6">
-                <h2 className="font-bold text-lg mb-4">Generate Content</h2>
-                
-                {/* Templates */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium mb-2">Template</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {templates.map((t) => (
-                      <button
-                        key={t.id}
-                        onClick={() => setTemplate(t.id)}
-                        className={`p-4 border transition-all text-left ${
-                          template === t.id 
-                            ? 'border-[#002BF6] bg-[#002BF6]/5' 
-                            : 'border-zinc-200 hover:border-zinc-300'
-                        }`}
-                        data-testid={`template-${t.id}`}
-                      >
-                        <t.icon size={20} className={template === t.id ? 'text-[#002BF6]' : 'text-zinc-600'} />
-                        <span className="block text-sm font-medium mt-2">{t.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Options */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5">Language</label>
-                    <select
-                      value={language}
-                      onChange={(e) => setLanguage(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-zinc-300 focus:border-[#002BF6] outline-none bg-white"
-                      data-testid="language-select"
-                    >
-                      {languages.map((l) => <option key={l} value={l}>{l}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5">Tone</label>
-                    <select
-                      value={tone}
-                      onChange={(e) => setTone(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-zinc-300 focus:border-[#002BF6] outline-none bg-white"
-                      data-testid="tone-select"
-                    >
-                      {tones.map((t) => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Prompt */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium mb-1.5">Describe what you want</label>
-                  <textarea
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="E.g., Write a compelling Instagram caption for a new coffee shop opening..."
-                    className="w-full px-4 py-3 border border-zinc-300 focus:border-[#002BF6] outline-none resize-none h-32"
-                    data-testid="prompt-input"
-                  />
-                </div>
-
-                {/* Generate Button */}
-                <button
-                  onClick={handleGenerate}
-                  disabled={generating || isLimitReached}
-                  className="w-full btn-primary py-3 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  data-testid="generate-btn"
-                >
-                  {generating ? (
-                    <>
-                      <div className="spinner border-white border-t-transparent" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkle size={20} weight="fill" />
-                      Generate Content
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Result */}
-              {result && (
-                <div className="bg-white border border-zinc-200 p-6 animate-fade-in" data-testid="result-card">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold">Generated Content</h3>
-                    <button
-                      onClick={copyToClipboard}
-                      className="flex items-center gap-2 px-3 py-1.5 text-sm border border-zinc-200 hover:border-[#002BF6] transition-colors"
-                      data-testid="copy-btn"
-                    >
-                      {copied ? <Check size={16} className="text-green-600" /> : <Copy size={16} />}
-                      {copied ? "Copied!" : "Copy"}
-                    </button>
-                  </div>
-                  <div className="prose prose-sm max-w-none" data-testid="result-content">
-                    <p className="whitespace-pre-wrap text-zinc-700">{result.content}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* History Sidebar */}
-            <div className="bg-white border border-zinc-200 p-6 h-fit">
-              <h2 className="font-bold text-lg mb-4">Recent Generations</h2>
-              {history.length === 0 ? (
-                <p className="text-sm text-zinc-500">No generations yet. Create your first!</p>
-              ) : (
-                <div className="space-y-4 max-h-[500px] overflow-y-auto">
-                  {history.slice(0, 10).map((item) => (
-                    <div 
-                      key={item.id} 
-                      className="border-b border-zinc-100 pb-4 last:border-0 cursor-pointer hover:bg-zinc-50 -mx-2 px-2 py-2 transition-colors"
-                      onClick={() => {
-                        setResult(item);
-                        setTemplate(item.template);
-                        setPrompt(item.prompt);
-                      }}
-                      data-testid={`history-${item.id}`}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-medium px-2 py-0.5 bg-zinc-100 uppercase">{item.template.replace("_", " ")}</span>
-                      </div>
-                      <p className="text-sm text-zinc-600 line-clamp-2">{item.content}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
-  );
-};
-
-const Pricing = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-
-  const handleUpgrade = async () => {
-    if (!user) {
-      navigate("/register");
-      return;
-    }
-    
-    if (user.is_premium) {
-      toast.info("You're already a Premium member!");
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      const { data } = await API.post("/payments/create-checkout", {
-        origin_url: window.location.origin
-      });
-      window.location.href = data.url;
-    } catch (err) {
-      toast.error(formatError(err));
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-stone-50">
       <Navbar />
       
-      <main className="pt-32 pb-20 px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">Simple, Transparent Pricing</h1>
-            <p className="text-lg text-zinc-600">Start free, upgrade when you need more.</p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* Free Plan */}
-            <div className="bg-white border border-zinc-200 p-8" data-testid="free-plan">
-              <h3 className="text-xl font-bold mb-2">Free</h3>
-              <p className="text-zinc-600 text-sm mb-6">Perfect for trying out WriteGenius</p>
-              <div className="text-4xl font-bold mb-6">
-                €0 <span className="text-base font-normal text-zinc-500">/month</span>
-              </div>
-              <ul className="space-y-3 mb-8">
-                <li className="flex items-center gap-2 text-sm">
-                  <Check size={18} className="text-green-600" /> 5 generations per day
-                </li>
-                <li className="flex items-center gap-2 text-sm">
-                  <Check size={18} className="text-green-600" /> All templates
-                </li>
-                <li className="flex items-center gap-2 text-sm">
-                  <Check size={18} className="text-green-600" /> 50+ languages
-                </li>
-                <li className="flex items-center gap-2 text-sm">
-                  <Check size={18} className="text-green-600" /> Generation history
-                </li>
-              </ul>
-              {!user ? (
-                <Link to="/register" className="block w-full py-3 text-center font-semibold border border-zinc-300 hover:border-zinc-400 transition-colors" data-testid="free-cta">
-                  Get Started
-                </Link>
-              ) : (
-                <span className="block w-full py-3 text-center font-semibold bg-zinc-100 text-zinc-500">
-                  Current Plan
-                </span>
-              )}
+      <main className="pt-24 pb-16 px-4 sm:px-6">
+        <div className="max-w-6xl mx-auto">
+          <h1 className="text-3xl font-serif font-bold mb-8">Cărțile Mele</h1>
+          
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="spinner" />
             </div>
+          ) : books.length === 0 ? (
+            <div className="text-center py-16">
+              <Book size={64} className="mx-auto mb-4 text-stone-300" />
+              <h2 className="text-xl font-medium text-stone-600 mb-2">Nu ai cărți încă</h2>
+              <p className="text-stone-500 mb-6">Explorează biblioteca și adaugă cărți!</p>
+              <Link to="/library" className="btn-primary px-6 py-3 rounded-lg inline-flex items-center gap-2">
+                <BookOpen size={20} /> Explorează Biblioteca
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+              {books.map((book) => (
+                <BookCard key={book._id} book={book} />
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+};
 
-            {/* Premium Plan */}
-            <div className="bg-[#09090B] text-white border border-zinc-800 p-8 relative" data-testid="premium-plan">
-              <span className="absolute top-4 right-4 px-3 py-1 bg-[#002BF6] text-xs font-semibold">POPULAR</span>
-              <h3 className="text-xl font-bold mb-2">Premium</h3>
-              <p className="text-zinc-400 text-sm mb-6">For creators who need more power</p>
-              <div className="text-4xl font-bold mb-6">
-                €8 <span className="text-base font-normal text-zinc-400">/month</span>
+const Admin = () => {
+  const { user } = useAuth();
+  const [stats, setStats] = useState(null);
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddBook, setShowAddBook] = useState(false);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    language: "ro",
+    category: "fiction",
+    price: 0,
+    is_free: true,
+    content: "",
+    cover_url: ""
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const [statsRes, booksRes] = await Promise.all([
+        API.get("/admin/stats"),
+        API.get("/admin/books")
+      ]);
+      setStats(statsRes.data);
+      setBooks(booksRes.data.books);
+    } catch (err) {
+      console.error("Failed to fetch admin data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddBook = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const form = new FormData();
+      Object.entries(formData).forEach(([key, value]) => {
+        form.append(key, value);
+      });
+      
+      await API.post("/admin/books", form, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      
+      toast.success("Cartea a fost adăugată!");
+      setShowAddBook(false);
+      setFormData({
+        title: "",
+        description: "",
+        language: "ro",
+        category: "fiction",
+        price: 0,
+        is_free: true,
+        content: "",
+        cover_url: ""
+      });
+      fetchData();
+    } catch (err) {
+      toast.error(formatError(err));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteBook = async (bookId) => {
+    if (!window.confirm("Ești sigur că vrei să ștergi această carte?")) return;
+    
+    try {
+      await API.delete(`/admin/books/${bookId}`);
+      toast.success("Cartea a fost ștearsă!");
+      fetchData();
+    } catch (err) {
+      toast.error(formatError(err));
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="spinner" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-stone-50">
+      <Navbar />
+      
+      <main className="pt-24 pb-16 px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="text-3xl font-serif font-bold">Panou Admin</h1>
+            <button
+              onClick={() => setShowAddBook(true)}
+              className="btn-primary px-6 py-3 rounded-lg flex items-center gap-2"
+              data-testid="add-book-btn"
+            >
+              <Plus size={20} /> Adaugă Carte
+            </button>
+          </div>
+          
+          {/* Stats */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="bg-white rounded-xl p-6 border border-stone-100">
+              <p className="text-sm text-stone-500 mb-1">Total Cărți</p>
+              <p className="text-3xl font-bold">{stats?.total_books || 0}</p>
+            </div>
+            <div className="bg-white rounded-xl p-6 border border-stone-100">
+              <p className="text-sm text-stone-500 mb-1">Total Utilizatori</p>
+              <p className="text-3xl font-bold">{stats?.total_users || 0}</p>
+            </div>
+            <div className="bg-white rounded-xl p-6 border border-stone-100">
+              <p className="text-sm text-stone-500 mb-1">Total Vânzări</p>
+              <p className="text-3xl font-bold">{stats?.total_sales || 0}</p>
+            </div>
+            <div className="bg-white rounded-xl p-6 border border-stone-100">
+              <p className="text-sm text-stone-500 mb-1">Venit Total</p>
+              <p className="text-3xl font-bold text-green-600">€{(stats?.total_revenue || 0).toFixed(2)}</p>
+            </div>
+          </div>
+          
+          {/* Books Table */}
+          <div className="bg-white rounded-xl border border-stone-100 overflow-hidden">
+            <div className="p-4 border-b border-stone-100">
+              <h2 className="font-bold">Cărți ({books.length})</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-stone-50">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-sm font-medium">Titlu</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium">Limbă</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium">Categorie</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium">Preț</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium">Vizualizări</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium">Vânzări</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium">Acțiuni</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {books.map((book) => (
+                    <tr key={book._id} className="border-t border-stone-100">
+                      <td className="px-4 py-3 font-medium">{book.title}</td>
+                      <td className="px-4 py-3">{LANGUAGES[book.language]?.flag} {LANGUAGES[book.language]?.name}</td>
+                      <td className="px-4 py-3">{CATEGORIES[book.category]?.ro}</td>
+                      <td className="px-4 py-3">{book.is_free ? "Gratuit" : `€${book.price}`}</td>
+                      <td className="px-4 py-3">{book.views || 0}</td>
+                      <td className="px-4 py-3">{book.sales || 0}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => handleDeleteBook(book._id)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <Trash size={18} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+      
+      {/* Add Book Modal */}
+      {showAddBook && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold">Adaugă Carte Nouă</h2>
+              <button onClick={() => setShowAddBook(false)}><X size={24} /></button>
+            </div>
+            
+            <form onSubmit={handleAddBook} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Titlu</label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  className="w-full px-4 py-2 rounded-lg border border-stone-200"
+                  required
+                  data-testid="book-title-input"
+                />
               </div>
-              <ul className="space-y-3 mb-8">
-                <li className="flex items-center gap-2 text-sm">
-                  <Check size={18} className="text-[#002BF6]" /> Unlimited generations
-                </li>
-                <li className="flex items-center gap-2 text-sm">
-                  <Check size={18} className="text-[#002BF6]" /> All templates
-                </li>
-                <li className="flex items-center gap-2 text-sm">
-                  <Check size={18} className="text-[#002BF6]" /> 50+ languages
-                </li>
-                <li className="flex items-center gap-2 text-sm">
-                  <Check size={18} className="text-[#002BF6]" /> Priority support
-                </li>
-                <li className="flex items-center gap-2 text-sm">
-                  <Check size={18} className="text-[#002BF6]" /> Advanced tones
-                </li>
-              </ul>
-              {user?.is_premium ? (
-                <span className="block w-full py-3 text-center font-semibold bg-zinc-800 text-zinc-400">
-                  Current Plan
-                </span>
-              ) : (
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Descriere</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  className="w-full px-4 py-2 rounded-lg border border-stone-200 h-24"
+                  required
+                  data-testid="book-description-input"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Limbă</label>
+                  <select
+                    value={formData.language}
+                    onChange={(e) => setFormData({...formData, language: e.target.value})}
+                    className="w-full px-4 py-2 rounded-lg border border-stone-200"
+                    data-testid="book-language-select"
+                  >
+                    {Object.entries(LANGUAGES).map(([code, lang]) => (
+                      <option key={code} value={code}>{lang.flag} {lang.name}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-1">Categorie</label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) => setFormData({...formData, category: e.target.value})}
+                    className="w-full px-4 py-2 rounded-lg border border-stone-200"
+                    data-testid="book-category-select"
+                  >
+                    {Object.entries(CATEGORIES).map(([key, cat]) => (
+                      <option key={key} value={key}>{cat.icon} {cat.ro}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Preț (€)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.price}
+                    onChange={(e) => setFormData({...formData, price: parseFloat(e.target.value) || 0})}
+                    className="w-full px-4 py-2 rounded-lg border border-stone-200"
+                    data-testid="book-price-input"
+                  />
+                </div>
+                
+                <div className="flex items-center">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_free}
+                      onChange={(e) => setFormData({...formData, is_free: e.target.checked})}
+                      className="w-5 h-5 rounded"
+                      data-testid="book-free-checkbox"
+                    />
+                    <span className="text-sm font-medium">Carte gratuită</span>
+                  </label>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">URL Copertă (opțional)</label>
+                <input
+                  type="url"
+                  value={formData.cover_url}
+                  onChange={(e) => setFormData({...formData, cover_url: e.target.value})}
+                  className="w-full px-4 py-2 rounded-lg border border-stone-200"
+                  placeholder="https://..."
+                  data-testid="book-cover-input"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Conținut Carte</label>
+                <textarea
+                  value={formData.content}
+                  onChange={(e) => setFormData({...formData, content: e.target.value})}
+                  className="w-full px-4 py-2 rounded-lg border border-stone-200 h-48 font-mono text-sm"
+                  placeholder="Lipește conținutul cărții aici..."
+                  data-testid="book-content-input"
+                />
+              </div>
+              
+              <div className="flex gap-3 pt-4">
                 <button
-                  onClick={handleUpgrade}
-                  disabled={loading}
-                  className="w-full py-3 bg-[#002BF6] hover:bg-[#0021C7] font-semibold transition-colors flex items-center justify-center gap-2"
-                  data-testid="premium-cta"
+                  type="button"
+                  onClick={() => setShowAddBook(false)}
+                  className="flex-1 px-4 py-3 rounded-lg border border-stone-200 font-medium"
                 >
-                  {loading ? <div className="spinner border-white border-t-transparent" /> : (
-                    <>
-                      <Crown size={18} /> Upgrade Now
-                    </>
-                  )}
+                  Anulează
                 </button>
-              )}
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-1 btn-primary py-3 rounded-lg flex items-center justify-center"
+                  data-testid="submit-book-btn"
+                >
+                  {submitting ? <div className="spinner border-white border-t-transparent" /> : "Adaugă Carte"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const Giveaway = () => {
+  return (
+    <div className="min-h-screen bg-stone-50">
+      <Navbar />
+      
+      <main className="pt-24 pb-16 px-4 sm:px-6">
+        <div className="max-w-3xl mx-auto">
+          <div className="bg-white rounded-3xl p-8 sm:p-12 shadow-sm border border-stone-100">
+            <div className="text-center mb-8">
+              <Gift size={64} className="mx-auto text-orange-500 mb-4" />
+              <h1 className="text-3xl sm:text-4xl font-serif font-bold mb-4">Regulament Tombolă</h1>
+            </div>
+            
+            <div className="prose max-w-none">
+              <h2>🎁 Premii</h2>
+              <h3>La 500 de cumpărături:</h3>
+              <ul>
+                <li><strong>1x Tabletă</strong> (valoare aprox. €150) - prin extragere aleatorie</li>
+              </ul>
+              
+              <h3>La 1000 de cumpărături:</h3>
+              <ul>
+                <li><strong>Locul 1:</strong> Abonament gratuit 1 AN</li>
+                <li><strong>Locul 2:</strong> Abonament gratuit 6 LUNI</li>
+                <li><strong>Locul 3:</strong> Abonament gratuit 3 LUNI</li>
+              </ul>
+              
+              <h2>📋 Condiții de participare</h2>
+              <ol>
+                <li>Participanții trebuie să aibă cont pe FreelancerIonel.com</li>
+                <li>Fiecare cumpărare = 1 șansă la extragere</li>
+                <li>Extragerea se face aleatoriu, public</li>
+                <li>Câștigătorii vor fi notificați prin email</li>
+              </ol>
+              
+              <h2>⚖️ Aspecte Legale</h2>
+              <p>
+                Această tombolă respectă legislația în vigoare privind concursurile promoționale.
+                Organizatorul își rezervă dreptul de a modifica regulamentul cu notificare prealabilă.
+              </p>
+              
+              <h2>📞 Contact</h2>
+              <p>
+                Pentru întrebări: <a href="mailto:contact@freelancerionel.com">contact@freelancerionel.com</a>
+              </p>
             </div>
           </div>
         </div>
@@ -1005,6 +1405,60 @@ const Pricing = () => {
     </div>
   );
 };
+
+const Terms = () => (
+  <div className="min-h-screen bg-stone-50">
+    <Navbar />
+    <main className="pt-24 pb-16 px-4 sm:px-6">
+      <div className="max-w-3xl mx-auto bg-white rounded-2xl p-8 shadow-sm">
+        <h1 className="text-3xl font-serif font-bold mb-6">Termeni și Condiții</h1>
+        <div className="prose">
+          <h2>1. Acceptarea Termenilor</h2>
+          <p>Prin utilizarea site-ului FreelancerIonel.com, acceptați acești termeni.</p>
+          
+          <h2>2. Servicii</h2>
+          <p>Oferim cărți electronice pentru citire online și descărcare.</p>
+          
+          <h2>3. Conturi</h2>
+          <p>Sunteți responsabil pentru securitatea contului dumneavoastră.</p>
+          
+          <h2>4. Plăți</h2>
+          <p>Plățile sunt procesate securizat prin Stripe.</p>
+          
+          <h2>5. Drepturi de Autor</h2>
+          <p>Conținutul este protejat de drepturi de autor. Nu aveți dreptul să redistribuiți cărțile.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+);
+
+const Privacy = () => (
+  <div className="min-h-screen bg-stone-50">
+    <Navbar />
+    <main className="pt-24 pb-16 px-4 sm:px-6">
+      <div className="max-w-3xl mx-auto bg-white rounded-2xl p-8 shadow-sm">
+        <h1 className="text-3xl font-serif font-bold mb-6">Politica de Confidențialitate</h1>
+        <div className="prose">
+          <h2>1. Date Colectate</h2>
+          <p>Colectăm: nume, email, istoric cumpărături.</p>
+          
+          <h2>2. Utilizarea Datelor</h2>
+          <p>Datele sunt folosite pentru funcționarea serviciului și comunicare.</p>
+          
+          <h2>3. Cookies</h2>
+          <p>Folosim cookies pentru autentificare și preferințe.</p>
+          
+          <h2>4. GDPR</h2>
+          <p>Respectăm Regulamentul General privind Protecția Datelor (GDPR).</p>
+          
+          <h2>5. Contact</h2>
+          <p>Pentru ștergerea datelor: contact@freelancerionel.com</p>
+        </div>
+      </div>
+    </main>
+  </div>
+);
 
 // ==================== APP ====================
 
@@ -1014,13 +1468,23 @@ function App() {
       <BrowserRouter>
         <Toaster position="top-right" richColors />
         <Routes>
-          <Route path="/" element={<Landing />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/library" element={<Library />} />
+          <Route path="/book/:id" element={<BookDetail />} />
+          <Route path="/read/:id" element={<Reader />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/pricing" element={<Pricing />} />
-          <Route path="/dashboard" element={
+          <Route path="/giveaway" element={<Giveaway />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/my-books" element={
             <ProtectedRoute>
-              <Dashboard />
+              <MyBooks />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin" element={
+            <ProtectedRoute adminOnly>
+              <Admin />
             </ProtectedRoute>
           } />
           <Route path="*" element={<Navigate to="/" replace />} />
