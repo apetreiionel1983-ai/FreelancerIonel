@@ -1050,6 +1050,7 @@ const Admin = () => {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddBook, setShowAddBook] = useState(false);
+  const [editingBook, setEditingBook] = useState(null);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -1059,7 +1060,8 @@ const Admin = () => {
     is_free: true,
     content: "",
     cover_url: "",
-    book_file: null
+    book_file: null,
+    auto_translate: false
   });
   const [submitting, setSubmitting] = useState(false);
   const [uploadMethod, setUploadMethod] = useState("text"); // "text" or "file"
