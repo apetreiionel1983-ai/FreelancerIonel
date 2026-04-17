@@ -1359,17 +1359,41 @@ const Admin = () => {
                   />
                 ) : (
                   <div>
+                    <label 
+                      htmlFor="book-file-upload" 
+                      className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg border-2 border-dashed border-orange-300 bg-orange-50 hover:bg-orange-100 cursor-pointer transition-colors"
+                    >
+                      <span className="text-orange-600 font-medium">📎 Selectează Fișier (PDF, EPUB, TXT)</span>
+                    </label>
                     <input
+                      id="book-file-upload"
                       type="file"
                       accept=".pdf,.epub,.txt"
-                      onChange={(e) => setFormData({...formData, book_file: e.target.files[0]})}
-                      className="w-full px-4 py-2 rounded-lg border border-stone-200"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          setFormData({...formData, book_file: file});
+                        }
+                      }}
+                      className="hidden"
                       data-testid="book-file-input"
                     />
                     {formData.book_file && (
-                      <p className="text-sm text-green-600 mt-2">
-                        ✅ {formData.book_file.name} ({(formData.book_file.size / 1024 / 1024).toFixed(2)} MB)
-                      </p>
+                      <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-sm text-green-700 font-medium">
+                          ✅ Fișier selectat:
+                        </p>
+                        <p className="text-sm text-green-600 mt-1">
+                          📄 {formData.book_file.name} ({(formData.book_file.size / 1024 / 1024).toFixed(2)} MB)
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({...formData, book_file: null})}
+                          className="text-xs text-red-600 hover:text-red-800 mt-2"
+                        >
+                          ✖ Elimină fișier
+                        </button>
+                      </div>
                     )}
                     <p className="text-xs text-stone-500 mt-2">
                       Acceptă fișiere PDF, EPUB și TXT. Textul va fi extras automat.
