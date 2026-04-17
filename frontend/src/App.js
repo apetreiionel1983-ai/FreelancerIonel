@@ -1476,7 +1476,7 @@ const Admin = () => {
               
               {!editingBook && (
                 <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                <label className="flex items-center gap-3 cursor-pointer">
+                  <label className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={formData.auto_translate}
@@ -1492,8 +1492,7 @@ const Admin = () => {
                   </div>
                 </label>
               </div>
-
-              
+              )}
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
