@@ -1058,9 +1058,11 @@ const Admin = () => {
     price: 0,
     is_free: true,
     content: "",
-    cover_url: ""
+    cover_url: "",
+    book_file: null
   });
   const [submitting, setSubmitting] = useState(false);
+  const [uploadMethod, setUploadMethod] = useState("text"); // "text" or "file"
 
   useEffect(() => {
     fetchData();
@@ -1087,7 +1089,11 @@ const Admin = () => {
     try {
       const form = new FormData();
       Object.entries(formData).forEach(([key, value]) => {
-        form.append(key, value);
+        if (key === "book_file" && value) {
+          form.append("book_file", value);
+        } else if (key !== "book_file") {
+          form.append(key, value);
+        }
       });
       
       await API.post("/admin/books", form, {
@@ -1104,8 +1110,11 @@ const Admin = () => {
         price: 0,
         is_free: true,
         content: "",
-        cover_url: ""
+        cover_url: "",
+        book_file: null,
+        auto_translate: false
       });
+      setUploadMethod("text");
       fetchData();
     } catch (err) {
       toast.error(formatError(err));
@@ -1318,15 +1327,75 @@ const Admin = () => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium mb-1">Conținut Carte</label>
-                <textarea
-                  value={formData.content}
-                  onChange={(e) => setFormData({...formData, content: e.target.value})}
-                  className="w-full px-4 py-2 rounded-lg border border-stone-200 h-48 font-mono text-sm"
-                  placeholder="Lipește conținutul cărții aici..."
-                  data-testid="book-content-input"
-                />
+                <label className="block text-sm font-medium mb-2">Metodă Încărcare Conținut</label>
+                <div className="flex gap-4 mb-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={uploadMethod === "text"}
+                      onChange={() => setUploadMethod("text")}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">📝 Lipește Text</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={uploadMethod === "file"}
+                      onChange={() => setUploadMethod("file")}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">📄 Upload PDF/EPUB</span>
+                  </label>
+                </div>
+                
+                {uploadMethod === "text" ? (
+                  <textarea
+                    value={formData.content}
+                    onChange={(e) => setFormData({...formData, content: e.target.value})}
+                    className="w-full px-4 py-2 rounded-lg border border-stone-200 h-48 font-mono text-sm"
+                    placeholder="Lipește conținutul cărții aici..."
+                    data-testid="book-content-input"
+                  />
+                ) : (
+                  <div>
+                    <input
+                      type="file"
+                      accept=".pdf,.epub"
+                      onChange={(e) => setFormData({...formData, book_file: e.target.files[0]})}
+                      className="w-full px-4 py-2 rounded-lg border border-stone-200"
+                      data-testid="book-file-input"
+                    />
+                    {formData.book_file && (
+                      <p className="text-sm text-green-600 mt-2">
+                        ✅ {formData.book_file.name} ({(formData.book_file.size / 1024 / 1024).toFixed(2)} MB)
+                      </p>
+                    )}
+                    <p className="text-xs text-stone-500 mt-2">
+                      Acceptă doar fișiere PDF și EPUB. Textul va fi extras automat.
+                    </p>
+                  </div>
+                )}
               </div>
+              
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.auto_translate}
+                    onChange={(e) => setFormData({...formData, auto_translate: e.target.checked})}
+                    className="w-5 h-5 rounded"
+                    data-testid="auto-translate-checkbox"
+                  />
+                  <div>
+                    <span className="font-medium text-orange-800">🤖 Traducere Automată AI</span>
+                    <p className="text-xs text-orange-600 mt-1">
+                      Creează automat versiuni în celelalte 5 limbi (EN, ES, DE, IT, FR)
+                    </p>
+                  </div>
+                </label>
+              </div>
+
               
               <div className="flex gap-3 pt-4">
                 <button

@@ -15,10 +15,27 @@ import bcrypt
 import jwt
 import secrets
 import base64
+import io
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutSessionRequest
+
+# PDF/EPUB processing
+try:
+    import PyPDF2
+    from ebooklib import epub
+    from bs4 import BeautifulSoup
+    PDF_EPUB_ENABLED = True
+except ImportError:
+    PDF_EPUB_ENABLED = False
+
+# AI Translation
+try:
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    AI_TRANSLATION_ENABLED = True
+except ImportError:
+    AI_TRANSLATION_ENABLED = False
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -509,6 +526,56 @@ async def get_admin_stats(user: dict = Depends(require_admin)):
         "total_revenue": total_revenue
     }
 
+def extract_text_from_pdf(file_bytes: bytes) -> str:
+    """Extract text from PDF file"""
+    try:
+        pdf_file = io.BytesIO(file_bytes)
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text() + "\n"
+        return text.strip()
+    except Exception as e:
+        logger.error(f"PDF extraction error: {e}")
+        raise HTTPException(status_code=400, detail=f"Could not extract text from PDF: {str(e)}")
+
+def extract_text_from_epub(file_bytes: bytes) -> str:
+    """Extract text from EPUB file"""
+    try:
+        book = epub.read_epub(io.BytesIO(file_bytes))
+        text = ""
+        for item in book.get_items():
+            if item.get_type() == 9:  # EBOOKLIB.ITEM_DOCUMENT
+                soup = BeautifulSoup(item.get_content(), 'html.parser')
+                text += soup.get_text() + "\n"
+        return text.strip()
+    except Exception as e:
+        logger.error(f"EPUB extraction error: {e}")
+        raise HTTPException(status_code=400, detail=f"Could not extract text from EPUB: {str(e)}")
+
+async def translate_text(text: str, target_language: str) -> str:
+    """Translate text to target language using AI"""
+    if not AI_TRANSLATION_ENABLED:
+        raise HTTPException(status_code=400, detail="AI Translation not available")
+    
+    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Translation API key not configured")
+    
+    try:
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=f"translation-{target_language}",
+            system_message=f"You are a professional translator. Translate the following text to {LANGUAGES[target_language]['name']}. Preserve formatting and paragraph breaks. Return ONLY the translated text, no explanations."
+        ).with_model("openai", "gpt-5.1")
+        
+        user_message = UserMessage(text=text)
+        response = await chat.send_message(user_message)
+        return response.strip()
+    except Exception as e:
+        logger.error(f"Translation error: {e}")
+        raise HTTPException(status_code=500, detail=f"Translation failed: {str(e)}")
+
 @admin_router.post("/books")
 async def create_book(
     title: str = Form(...),
@@ -519,6 +586,8 @@ async def create_book(
     is_free: bool = Form(True),
     content: str = Form(""),
     cover_url: str = Form(""),
+    book_file: Optional[UploadFile] = File(None),
+    auto_translate: bool = Form(False),
     user: dict = Depends(require_admin)
 ):
     if language not in LANGUAGES:
@@ -526,6 +595,25 @@ async def create_book(
     if category not in CATEGORIES:
         raise HTTPException(status_code=400, detail="Invalid category")
     
+    # Extract text from uploaded file if provided
+    extracted_content = content
+    if book_file:
+        if not PDF_EPUB_ENABLED:
+            raise HTTPException(status_code=400, detail="PDF/EPUB processing not available")
+        
+        file_bytes = await book_file.read()
+        filename = book_file.filename.lower()
+        
+        if filename.endswith('.pdf'):
+            extracted_content = extract_text_from_pdf(file_bytes)
+        elif filename.endswith('.epub'):
+            extracted_content = extract_text_from_epub(file_bytes)
+        else:
+            raise HTTPException(status_code=400, detail="Only PDF and EPUB files are supported")
+        
+        logger.info(f"Extracted {len(extracted_content)} characters from {filename}")
+    
+    # Create main book
     book_doc = {
         "title": title,
         "description": description,
@@ -533,7 +621,7 @@ async def create_book(
         "category": category,
         "price": price,
         "is_free": is_free,
-        "content": content,
+        "content": extracted_content,
         "cover_url": cover_url,
         "has_audio": False,
         "audio_url": None,
@@ -545,7 +633,51 @@ async def create_book(
     }
     
     result = await db.books.insert_one(book_doc)
-    return {"id": str(result.inserted_id), "message": "Book created successfully"}
+    book_id = str(result.inserted_id)
+    
+    # Auto-translate to other languages if requested
+    translated_count = 0
+    if auto_translate and extracted_content:
+        if not AI_TRANSLATION_ENABLED:
+            return {"id": book_id, "message": "Book created but translation not available", "translated": 0}
+        
+        target_languages = [lang for lang in LANGUAGES.keys() if lang != language]
+        
+        for target_lang in target_languages:
+            try:
+                translated_content = await translate_text(extracted_content[:15000], target_lang)  # Limit to first 15k chars
+                translated_title = await translate_text(title, target_lang)
+                translated_desc = await translate_text(description, target_lang)
+                
+                translated_book = {
+                    "title": translated_title,
+                    "description": translated_desc,
+                    "language": target_lang,
+                    "category": category,
+                    "price": price,
+                    "is_free": is_free,
+                    "content": translated_content,
+                    "cover_url": cover_url,
+                    "has_audio": False,
+                    "audio_url": None,
+                    "is_published": True,
+                    "views": 0,
+                    "sales": 0,
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
+                }
+                
+                await db.books.insert_one(translated_book)
+                translated_count += 1
+                logger.info(f"Translated book to {target_lang}")
+            except Exception as e:
+                logger.error(f"Failed to translate to {target_lang}: {e}")
+    
+    return {
+        "id": book_id, 
+        "message": "Book created successfully",
+        "translated": translated_count
+    }
 
 @admin_router.put("/books/{book_id}")
 async def update_book(book_id: str, data: BookUpdate, user: dict = Depends(require_admin)):
