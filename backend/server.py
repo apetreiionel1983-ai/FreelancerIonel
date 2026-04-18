@@ -819,22 +819,17 @@ async def startup():
         f.write("## Admin Account\n")
         f.write(f"- Email: {admin_email}\n")
         f.write(f"- Password: {admin_password}\n")
+        f.write("- Role: admin\n\n")
+        f.write("- GET /api/books/{id}\n")
+        f.write("- GET /api/books/{id}/read\n")
+        f.write("- POST /api/admin/books\n")
 
 # Serve static files for cover images
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-        f.write("- Role: admin\n\n")
-        f.write("## Endpoints\n")
-        f.write("- POST /api/auth/register\n")
-        f.write("- POST /api/auth/login\n")
-        f.write("- GET /api/books/list\n")
-        f.write("- GET /api/books/{id}/read\n")
-        f.write("- POST /api/admin/books\n")
 
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
-
+# Serve static files for cover images
+app.mount("/static", StaticFiles(directory="static"), name="static")
 # Include routers
 api_router.include_router(auth_router)
 api_router.include_router(books_router)
