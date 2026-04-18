@@ -97,7 +97,7 @@ class BookCreate(BaseModel):
     language: str
     category: str
     price: float = 0.0
-    is_free: bool = True
+    is_free: bool = False
     cover_url: Optional[str] = None
 
 class BookUpdate(BaseModel):
@@ -586,7 +586,7 @@ async def create_book(
     language: str = Form(...),
     category: str = Form(...),
     price: float = Form(0.0),
-    is_free: bool = Form(True),
+    is_free: bool = Form(False),
     content: str = Form(""),
     cover_url: str = Form(""),
     book_file: Optional[UploadFile] = File(None),
@@ -644,14 +644,18 @@ async def create_book(
             logger.error(f"Failed to save cover image: {e}")
             # Continue without cover if upload fails
     
+    # Smart price/free logic: if price > 0, it cannot be free
+    final_is_free = is_free if price == 0 else False
+    final_price = 0.0 if is_free else price
+    
     # Create main book
     book_doc = {
         "title": title,
         "description": description,
         "language": language,
         "category": category,
-        "price": price,
-        "is_free": is_free,
+        "price": final_price,
+        "is_free": final_is_free,
         "content": extracted_content,
         "cover_url": final_cover_url,
         "has_audio": False,
@@ -685,8 +689,8 @@ async def create_book(
                     "description": translated_desc,
                     "language": target_lang,
                     "category": category,
-                    "price": price,
-                    "is_free": is_free,
+                    "price": final_price,
+                    "is_free": final_is_free,
                     "content": translated_content,
                     "cover_url": final_cover_url,
                     "has_audio": False,

@@ -1057,7 +1057,7 @@ const Admin = () => {
     language: "ro",
     category: "fiction",
     price: 0,
-    is_free: true,
+    is_free: false,
     content: "",
     cover_url: "",
     book_file: null,
@@ -1111,7 +1111,7 @@ const Admin = () => {
         language: "ro",
         category: "fiction",
         price: 0,
-        is_free: true,
+        is_free: false,
         content: "",
         cover_url: "",
         book_file: null,
@@ -1169,7 +1169,7 @@ const Admin = () => {
         language: "ro",
         category: "fiction",
         price: 0,
-        is_free: true,
+        is_free: false,
         content: "",
         cover_url: "",
         book_file: null,
@@ -1242,6 +1242,10 @@ const Admin = () => {
           <div className="bg-white rounded-xl border border-stone-100 overflow-hidden">
             <div className="p-4 border-b border-stone-100">
               <h2 className="font-bold">Cărți ({books.length})</h2>
+              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs">
+                <p className="font-medium text-blue-900">💡 Info prețuri:</p>
+                <p className="text-blue-800 mt-1">• Cărți cu preț → Cititorii plătesc prin Stripe • Cărți gratuite (€0) → Cititorii văd reclame AdSense • Vizualizări = accesări pagină carte</p>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -1251,7 +1255,7 @@ const Admin = () => {
                     <th className="text-left px-4 py-3 text-sm font-medium">Limbă</th>
                     <th className="text-left px-4 py-3 text-sm font-medium">Categorie</th>
                     <th className="text-left px-4 py-3 text-sm font-medium">Preț</th>
-                    <th className="text-left px-4 py-3 text-sm font-medium">Vizualizări</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium" title="Vizualizări = de câte ori a fost accesată pagina cărții">Vizualizări 👁️</th>
                     <th className="text-left px-4 py-3 text-sm font-medium">Vânzări</th>
                     <th className="text-left px-4 py-3 text-sm font-medium">Acțiuni</th>
                   </tr>
@@ -1364,7 +1368,14 @@ const Admin = () => {
                     type="number"
                     step="0.01"
                     value={formData.price}
-                    onChange={(e) => setFormData({...formData, price: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => {
+                      const newPrice = parseFloat(e.target.value) || 0;
+                      setFormData({
+                        ...formData, 
+                        price: newPrice,
+                        is_free: newPrice === 0
+                      });
+                    }}
                     className="w-full px-4 py-2 rounded-lg border border-stone-200"
                     data-testid="book-price-input"
                   />
@@ -1375,11 +1386,18 @@ const Admin = () => {
                     <input
                       type="checkbox"
                       checked={formData.is_free}
-                      onChange={(e) => setFormData({...formData, is_free: e.target.checked})}
+                      onChange={(e) => {
+                        const isFree = e.target.checked;
+                        setFormData({
+                          ...formData, 
+                          is_free: isFree,
+                          price: isFree ? 0 : formData.price
+                        });
+                      }}
                       className="w-5 h-5 rounded"
                       data-testid="book-free-checkbox"
                     />
-                    <span className="text-sm font-medium">Carte gratuită</span>
+                    <span className="text-sm font-medium">Carte gratuită (cu reclame)</span>
                   </label>
                 </div>
               </div>
