@@ -1061,6 +1061,7 @@ const Admin = () => {
     content: "",
     cover_url: "",
     book_file: null,
+    cover_image: null,
     auto_translate: false
   });
   const [submitting, setSubmitting] = useState(false);
@@ -1091,9 +1092,9 @@ const Admin = () => {
     try {
       const form = new FormData();
       Object.entries(formData).forEach(([key, value]) => {
-        if (key === "book_file" && value) {
-          form.append("book_file", value);
-        } else if (key !== "book_file") {
+        if ((key === "book_file" || key === "cover_image") && value) {
+          form.append(key, value);
+        } else if (key !== "book_file" && key !== "cover_image") {
           form.append(key, value);
         }
       });
@@ -1384,18 +1385,62 @@ const Admin = () => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium mb-1">URL Copertă (opțional)</label>
-                <input
-                  type="url"
-                  value={formData.cover_url}
-                  onChange={(e) => setFormData({...formData, cover_url: e.target.value})}
-                  className="w-full px-4 py-2 rounded-lg border border-stone-200"
-                  placeholder="https://i.imgur.com/ABC123.jpg"
-                  data-testid="book-cover-input"
-                />
-                <p className="text-xs text-stone-500 mt-1">
-                  💡 Upload imaginea pe <a href="https://imgur.com/upload" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Imgur</a> și copiază link-ul aici
-                </p>
+                <label className="block text-sm font-medium mb-1">Copertă Carte</label>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs text-stone-500 mb-1">Opțiunea 1: Upload Imagine Direct</label>
+                    <label 
+                      htmlFor="cover-image-upload" 
+                      className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg border-2 border-dashed border-blue-300 bg-blue-50 hover:bg-blue-100 cursor-pointer transition-colors"
+                    >
+                      <span className="text-blue-600 font-medium">📸 Selectează Imagine Copertă</span>
+                    </label>
+                    <input
+                      id="cover-image-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          setFormData({...formData, cover_image: file, cover_url: ""});
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    {formData.cover_image && (
+                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-sm text-green-700 font-medium">
+                          ✅ {formData.cover_image.name} ({(formData.cover_image.size / 1024 / 1024).toFixed(2)} MB)
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({...formData, cover_image: null})}
+                          className="text-xs text-red-600 hover:text-red-800 mt-1"
+                        >
+                          ✖ Elimină imagine
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="text-center text-sm text-stone-500">SAU</div>
+                  
+                  <div>
+                    <label className="block text-xs text-stone-500 mb-1">Opțiunea 2: Link Imgur</label>
+                    <input
+                      type="url"
+                      value={formData.cover_url}
+                      onChange={(e) => setFormData({...formData, cover_url: e.target.value, cover_image: null})}
+                      className="w-full px-4 py-2 rounded-lg border border-stone-200"
+                      placeholder="https://i.imgur.com/ABC123.jpg"
+                      data-testid="book-cover-input"
+                      disabled={!!formData.cover_image}
+                    />
+                    <p className="text-xs text-stone-500 mt-1">
+                      💡 <a href="https://imgur.com/upload" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Upload pe Imgur</a> sau folosește opțiunea de mai sus
+                    </p>
+                  </div>
+                </div>
               </div>
               
               {!editingBook && (

@@ -6,6 +6,7 @@ load_dotenv(ROOT_DIR / '.env')
 
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
@@ -16,6 +17,8 @@ import jwt
 import secrets
 import base64
 import io
+import uuid
+import shutil
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
@@ -587,6 +590,7 @@ async def create_book(
     content: str = Form(""),
     cover_url: str = Form(""),
     book_file: Optional[UploadFile] = File(None),
+    cover_image: Optional[UploadFile] = File(None),
     auto_translate: bool = Form(False),
     user: dict = Depends(require_admin)
 ):
@@ -617,6 +621,29 @@ async def create_book(
         
         logger.info(f"Extracted {len(extracted_content)} characters from {filename}")
     
+    # Handle cover image upload
+    final_cover_url = cover_url
+    if cover_image:
+        try:
+            # Generate unique filename
+            file_extension = cover_image.filename.split('.')[-1].lower()
+            if file_extension not in ['jpg', 'jpeg', 'png', 'webp', 'gif']:
+                raise HTTPException(status_code=400, detail="Only JPG, PNG, WEBP, GIF images are supported")
+            
+            unique_filename = f"{uuid.uuid4()}.{file_extension}"
+            file_path = f"static/covers/{unique_filename}"
+            
+            # Save file
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(cover_image.file, buffer)
+            
+            # Generate URL (relative path that frontend can use)
+            final_cover_url = f"/api/static/covers/{unique_filename}"
+            logger.info(f"Cover image saved: {final_cover_url}")
+        except Exception as e:
+            logger.error(f"Failed to save cover image: {e}")
+            # Continue without cover if upload fails
+    
     # Create main book
     book_doc = {
         "title": title,
@@ -626,7 +653,7 @@ async def create_book(
         "price": price,
         "is_free": is_free,
         "content": extracted_content,
-        "cover_url": cover_url,
+        "cover_url": final_cover_url,
         "has_audio": False,
         "audio_url": None,
         "is_published": True,
@@ -661,7 +688,7 @@ async def create_book(
                     "price": price,
                     "is_free": is_free,
                     "content": translated_content,
-                    "cover_url": cover_url,
+                    "cover_url": final_cover_url,
                     "has_audio": False,
                     "audio_url": None,
                     "is_published": True,
@@ -792,6 +819,10 @@ async def startup():
         f.write("## Admin Account\n")
         f.write(f"- Email: {admin_email}\n")
         f.write(f"- Password: {admin_password}\n")
+
+# Serve static files for cover images
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
         f.write("- Role: admin\n\n")
         f.write("## Endpoints\n")
         f.write("- POST /api/auth/register\n")
