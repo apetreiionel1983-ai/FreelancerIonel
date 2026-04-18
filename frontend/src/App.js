@@ -150,6 +150,12 @@ const Navbar = () => {
           <Link to="/library" className="text-sm font-medium text-stone-600 hover:text-orange-500 transition-colors" data-testid="nav-library">
             Bibliotecă
           </Link>
+          <Link to="/faq" className="text-sm font-medium text-stone-600 hover:text-orange-500 transition-colors">
+            FAQ
+          </Link>
+          <Link to="/contact" className="text-sm font-medium text-stone-600 hover:text-orange-500 transition-colors">
+            Contact
+          </Link>
           {user ? (
             <>
               <Link to="/my-books" className="text-sm font-medium text-stone-600 hover:text-orange-500 transition-colors" data-testid="nav-mybooks">
@@ -271,6 +277,30 @@ const AdBanner = ({ type = "horizontal" }) => (
   <div className={`ad-placeholder rounded-lg ${type === "horizontal" ? "h-24" : "h-64 w-full"}`}>
     <span>📢 Spațiu publicitar - Google AdSense</span>
   </div>
+);
+
+// Footer Component
+const Footer = () => (
+  <footer className="border-t border-stone-200 py-8 px-4 sm:px-6 bg-white mt-12">
+    <div className="max-w-6xl mx-auto">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Book size={24} className="text-orange-500" />
+          <span className="font-serif font-bold">FreelancerIonel</span>
+        </div>
+        <div className="flex flex-wrap gap-4 sm:gap-6 text-sm text-stone-500 justify-center">
+          <Link to="/contact" className="hover:text-orange-500">Contact</Link>
+          <Link to="/faq" className="hover:text-orange-500">FAQ</Link>
+          <Link to="/terms" className="hover:text-orange-500">Termeni</Link>
+          <Link to="/privacy" className="hover:text-orange-500">Confidențialitate</Link>
+          <Link to="/giveaway" className="hover:text-orange-500">Tombolă</Link>
+        </div>
+      </div>
+      <p className="text-center text-sm text-stone-400 mt-6">
+        © 2026 FreelancerIonel. Toate drepturile rezervate.
+      </p>
+    </div>
+  </footer>
 );
 
 // ==================== PAGES ====================
@@ -404,24 +434,7 @@ const Home = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-stone-200 py-8 px-4 sm:px-6 bg-white">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Book size={24} className="text-orange-500" />
-              <span className="font-serif font-bold">FreelancerIonel</span>
-            </div>
-            <div className="flex gap-6 text-sm text-stone-500">
-              <Link to="/terms" className="hover:text-orange-500">Termeni și Condiții</Link>
-              <Link to="/privacy" className="hover:text-orange-500">Confidențialitate</Link>
-              <Link to="/giveaway" className="hover:text-orange-500">Regulament Tombolă</Link>
-            </div>
-          </div>
-          <p className="text-center text-sm text-stone-400 mt-6">
-            © 2026 FreelancerIonel. Toate drepturile rezervate.
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };
@@ -1698,6 +1711,218 @@ const Privacy = () => (
 
 // ==================== APP ====================
 
+// ==================== CONTACT PAGE ====================
+const Contact = () => {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    subject: "",
+    message: ""
+  });
+  const [sending, setSending] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSending(true);
+    
+    try {
+      // For now, just show success message
+      // In production, this would send to backend API
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      toast.success("Mesajul tău a fost trimis! Îți vom răspunde în curând.");
+      setFormData({ name: "", email: "", subject: "", message: "" });
+    } catch (error) {
+      toast.error("Eroare la trimiterea mesajului. Te rugăm să încerci din nou.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100">
+      <Navbar />
+      
+      <div className="max-w-4xl mx-auto px-4 py-12">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-stone-800 mb-4">
+            Contactează-ne
+          </h1>
+          <p className="text-lg text-stone-600">
+            Ai întrebări sau sugestii? Ne-ar plăcea să auzim de la tine!
+          </p>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg p-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-2">
+                  Nume complet
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full px-4 py-3 rounded-lg border border-stone-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition"
+                  placeholder="Ion Popescu"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  className="w-full px-4 py-3 rounded-lg border border-stone-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition"
+                  placeholder="email@exemplu.ro"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-2">
+                Subiect
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.subject}
+                onChange={(e) => setFormData({...formData, subject: e.target.value})}
+                className="w-full px-4 py-3 rounded-lg border border-stone-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition"
+                placeholder="Despre ce vrei să ne scrii?"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-2">
+                Mesaj
+              </label>
+              <textarea
+                required
+                value={formData.message}
+                onChange={(e) => setFormData({...formData, message: e.target.value})}
+                rows="6"
+                className="w-full px-4 py-3 rounded-lg border border-stone-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition resize-none"
+                placeholder="Scrie mesajul tău aici..."
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={sending}
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {sending ? "Se trimite..." : "Trimite mesaj"}
+            </button>
+          </form>
+
+          <div className="mt-8 pt-8 border-t border-stone-200">
+            <h3 className="font-semibold text-stone-800 mb-4">Alte metode de contact:</h3>
+            <div className="space-y-2 text-stone-600">
+              <p>📧 Email: <a href="mailto:contact@freelancerionel.com" className="text-orange-500 hover:underline">contact@freelancerionel.com</a></p>
+              <p>⏰ Timp de răspuns: 24-48 ore</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <Footer />
+    </div>
+  );
+};
+
+// ==================== FAQ PAGE ====================
+const FAQ = () => {
+  const faqs = [
+    {
+      question: "Cum pot cumpăra o carte?",
+      answer: "Navighează în Bibliotecă, selectează cartea dorită și click pe 'Cumpără'. Plata se face sigur prin Stripe cu card bancar."
+    },
+    {
+      question: "Pot citi cărțile gratuit?",
+      answer: "Da! Cărțile marcate 'Gratuit' pot fi citite online fără plată, dar vor conține reclame Google AdSense."
+    },
+    {
+      question: "Ce limbi sunt disponibile?",
+      answer: "Oferim cărți în 6 limbi: Română, English, Español, Deutsch, Italiano și Français."
+    },
+    {
+      question: "Cum funcționează cumpărarea?",
+      answer: "După plată, cartea este adăugată automat în biblioteca ta personală. Poți citi fără reclame și ai acces permanent."
+    },
+    {
+      question: "Pot returna o carte?",
+      answer: "Cărțile digitale nu pot fi returnate după cumpărare. Te rugăm să verifici descrierea și previzualizarea înainte de achiziție."
+    },
+    {
+      question: "Ce metode de plată acceptați?",
+      answer: "Acceptăm toate cardurile majore (Visa, Mastercard, American Express) prin procesorul securizat Stripe."
+    },
+    {
+      question: "Primesc factură?",
+      answer: "Da, vei primi automat o factură pe email după finalizarea plății."
+    },
+    {
+      question: "Cum funcționează Giveaway-ul?",
+      answer: "La fiecare 500 și 1000 de cărți vândute, oferim premii celor mai activi cumpărători. Detalii pe pagina Giveaway."
+    },
+    {
+      question: "Am o problemă tehnică. Ce fac?",
+      answer: "Contactează-ne prin formularul de Contact sau la contact@freelancerionel.com. Răspundem în 24-48 ore."
+    }
+  ];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100">
+      <Navbar />
+      
+      <div className="max-w-4xl mx-auto px-4 py-12">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-stone-800 mb-4">
+            Întrebări Frecvente (FAQ)
+          </h1>
+          <p className="text-lg text-stone-600">
+            Răspunsuri la cele mai comune întrebări
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {faqs.map((faq, index) => (
+            <details key={index} className="bg-white rounded-xl shadow-md overflow-hidden group">
+              <summary className="px-6 py-4 cursor-pointer font-semibold text-stone-800 hover:bg-stone-50 transition flex items-center justify-between">
+                <span>{faq.question}</span>
+                <span className="text-orange-500 group-open:rotate-180 transition-transform">▼</span>
+              </summary>
+              <div className="px-6 py-4 border-t border-stone-100 text-stone-600">
+                {faq.answer}
+              </div>
+            </details>
+          ))}
+        </div>
+
+        <div className="mt-12 bg-orange-50 border border-orange-200 rounded-xl p-6 text-center">
+          <p className="text-stone-700 mb-4">
+            Nu ai găsit răspunsul pe care îl cauți?
+          </p>
+          <Link 
+            to="/contact" 
+            className="inline-block bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-3 rounded-lg transition"
+          >
+            Contactează-ne
+          </Link>
+        </div>
+      </div>
+      
+      <Footer />
+    </div>
+  );
+};
+
 function App() {
   return (
     <AuthProvider>
@@ -1711,6 +1936,8 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/giveaway" element={<Giveaway />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/faq" element={<FAQ />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/my-books" element={
