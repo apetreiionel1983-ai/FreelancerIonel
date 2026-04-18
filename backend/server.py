@@ -631,7 +631,7 @@ async def create_book(
                 raise HTTPException(status_code=400, detail="Only JPG, PNG, WEBP, GIF images are supported")
             
             unique_filename = f"{uuid.uuid4()}.{file_extension}"
-            file_path = f"static/covers/{unique_filename}"
+            file_path = f"/app/backend/static/covers/{unique_filename}"
             
             # Save file
             with open(file_path, "wb") as buffer:
