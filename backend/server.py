@@ -831,9 +831,6 @@ async def startup():
 # Serve static files for cover images
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-
-# Serve static files for cover images
-app.mount("/static", StaticFiles(directory="static"), name="static")
 # Include routers
 api_router.include_router(auth_router)
 api_router.include_router(books_router)
