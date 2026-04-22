@@ -816,19 +816,23 @@ async def startup():
         await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})
         logger.info("Admin password updated")
     
-    # Write test credentials
-    os.makedirs("/app/memory", exist_ok=True)
-    with open("/app/memory/test_credentials.md", "w") as f:
-        f.write("# FreelancerIonel Test Credentials\n\n")
-        f.write("## Admin Account\n")
-        f.write(f"- Email: {admin_email}\n")
-        f.write(f"- Password: {admin_password}\n")
-        f.write("- Role: admin\n\n")
-        f.write("- GET /api/books/{id}\n")
-        f.write("- GET /api/books/{id}/read\n")
-        f.write("- POST /api/admin/books\n")
+    # Write test credentials (best-effort - skip if filesystem is read-only, e.g. on Render)
+    try:
+        os.makedirs("/app/memory", exist_ok=True)
+        with open("/app/memory/test_credentials.md", "w") as f:
+            f.write("# FreelancerIonel Test Credentials\n\n")
+            f.write("## Admin Account\n")
+            f.write(f"- Email: {admin_email}\n")
+            f.write(f"- Password: {admin_password}\n")
+            f.write("- Role: admin\n\n")
+            f.write("- GET /api/books/{id}\n")
+            f.write("- GET /api/books/{id}/read\n")
+            f.write("- POST /api/admin/books\n")
+    except (OSError, PermissionError) as e:
+        logger.warning(f"Skipping test credentials write: {e}")
 
-# Serve static files for cover images
+# Serve static files for cover images (create directory if missing)
+os.makedirs("static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Include routers
